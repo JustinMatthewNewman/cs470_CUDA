@@ -10,35 +10,29 @@ Requirements
 
 Installation
 
-    Clone the repository:
+Clone the repository:
 
-    bash
+    git clone https://github.com/JustinMatthewNewman/cs470_CUDA.git
 
-git clone https://github.com/JustinMatthewNewman/cs470_CUDA.git
+Change to build directory:
 
-Create a build directory:
-
-bash
-
-mkdir build
-cd build
-
-Configure the project using CMake:
-
-cmake ..
-
+    cd cs470_CUDA
 
 Build the project:
 
-    make
+    make serial
 
-Usage
+Usage: Parallel Image Processing <option(s)> image-file :
+  Options are:
+	-d 	desaturate <threshold>
+	-g	gaussian blur <threshold>
+	-r	rotate
+	-b	background removal <threshold>
+	-s	sorting <threshold>
 
-The project takes two command line arguments: the path to the input image and the path to the output image. Example usage:
+Example usage:
 
-lua
-
-./pixel_sorting input.jpg output.jpg
+./serial input.jpg -s 100
 
 References
 
