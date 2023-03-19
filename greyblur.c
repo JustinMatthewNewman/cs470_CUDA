@@ -1,9 +1,10 @@
 /**
- * CS 470 CUDA Lab
+ * CS 470 CUDA Project
  *
- * Name(s): 
+ * Name(s): Thomas (TJ) Davies, Justin Newman, Austin Bond, Andrew Fleming
  *
  * Originally written by William Lovo in Spring 2019 as a research project.
+ * Expanded upon to add more features by the names listed above.
  */
 
 #include <stdio.h>
