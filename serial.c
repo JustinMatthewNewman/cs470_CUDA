@@ -69,35 +69,59 @@ void blur(pixel_t *in, pixel_t *out, int width, int height)
     }
 }
 
-
-/**
- * Sorts a given PPM pixel array by brightness.
- * Brightness is calculated as the average of the red, green, and blue values.
- */
-void sort_by_brightness_vertical(pixel_t *in, pixel_t *out, int width, int height)
+void swap(pixel_t *a, pixel_t *b)
 {
-    for (int i = 0; i < width * height; i++) {
-        int brightest_index = i;
-        float brightest_brightness = (in[i].red + in[i].green + in[i].blue) / 3.0;
+    pixel_t temp = *a;
+    *a = *b;
+    *b = temp;
+}
 
-        for (int j = i + 1; j < width * height; j++) {
-            float current_brightness = (in[j].red + in[j].green + in[j].blue) / 3.0;
 
-            if (current_brightness > brightest_brightness) {
-                brightest_index = j;
-                brightest_brightness = current_brightness;
+void quicksort(pixel_t *in, int left, int right)
+{
+    if (left < right) {
+        int pivot_index = (left + right) / 2;
+        float pivot_brightness = (in[pivot_index].red + in[pivot_index].green + in[pivot_index].blue) / 3.0;
+
+        int i = left, j = right;
+
+        while (i <= j) {
+            float left_brightness = (in[i].red + in[i].green + in[i].blue) / 3.0;
+            float right_brightness = (in[j].red + in[j].green + in[j].blue) / 3.0;
+
+            while (left_brightness > pivot_brightness) {
+                i++;
+                left_brightness = (in[i].red + in[i].green + in[i].blue) / 3.0;
+            }
+
+            while (right_brightness < pivot_brightness) {
+                j--;
+                right_brightness = (in[j].red + in[j].green + in[j].blue) / 3.0;
+            }
+
+            if (i <= j) {
+                swap(&in[i], &in[j]);
+                i++;
+                j--;
             }
         }
 
-        out[i] = in[brightest_index];
-        in[brightest_index] = in[i];
+        quicksort(in, left, j);
+        quicksort(in, i, right);
     }
 }
+
+void sort_by_brightness(pixel_t *in, pixel_t *out, int width, int height)
+{
+    memcpy(out, in, sizeof(pixel_t) * width * height);
+    quicksort(out, 0, width * height - 1);
+}
+
 
 /**
  * Sorts each row of a given PPM pixel array by brightness.
  */
-void sort_by_brightness(pixel_t *in, pixel_t *out, int width, int height)
+void sort_by_brightness_cool(pixel_t *in, pixel_t *out, int width, int height)
 {
     for (int row = 0; row < height; row++) {
         // Compute brightness values for each pixel in the row
@@ -107,23 +131,15 @@ void sort_by_brightness(pixel_t *in, pixel_t *out, int width, int height)
             brightness[col] = (float) (in[index].red + in[index].green + in[index].blue) / 3.0f;
         }
 
-        // Sort pixels in the row by brightness
+        // Sort pixels in the row by brightness using quicksort
+        quicksort(in + row * width, 0, width - 1);
+
+        // Copy sorted row to output array
         for (int col = 0; col < width; col++) {
-            int max_index = col;
-            for (int j = col + 1; j < width; j++) {
-                if (brightness[j] > brightness[max_index]) {
-                    max_index = j;
-                }
-            }
-            out[row * width + col] = in[row * width + max_index];
-            brightness[max_index] = -1.0f;
+            out[row * width + col] = in[row * width + col];
         }
     }
 }
-
-
-
-
 
 
 // Main function
@@ -242,7 +258,7 @@ int main(int argc, char* argv[]) {
     // =========================== Sort ========================
     START_TIMER(sort)
     if (s_flag) {
-            sort_by_brightness(input->pixels, output->pixels, width, height);
+            sort_by_brightness_cool(input->pixels, output->pixels, width, height);
             if (g_flag || d_flag) {
                 memcpy(input->pixels, output->pixels, total_pixels * sizeof(pixel_t));
             }
