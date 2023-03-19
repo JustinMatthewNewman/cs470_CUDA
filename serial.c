@@ -70,6 +70,61 @@ void blur(pixel_t *in, pixel_t *out, int width, int height)
 }
 
 
+/**
+ * Sorts a given PPM pixel array by brightness.
+ * Brightness is calculated as the average of the red, green, and blue values.
+ */
+void sort_by_brightness_vertical(pixel_t *in, pixel_t *out, int width, int height)
+{
+    for (int i = 0; i < width * height; i++) {
+        int brightest_index = i;
+        float brightest_brightness = (in[i].red + in[i].green + in[i].blue) / 3.0;
+
+        for (int j = i + 1; j < width * height; j++) {
+            float current_brightness = (in[j].red + in[j].green + in[j].blue) / 3.0;
+
+            if (current_brightness > brightest_brightness) {
+                brightest_index = j;
+                brightest_brightness = current_brightness;
+            }
+        }
+
+        out[i] = in[brightest_index];
+        in[brightest_index] = in[i];
+    }
+}
+
+/**
+ * Sorts each row of a given PPM pixel array by brightness.
+ */
+void sort_by_brightness(pixel_t *in, pixel_t *out, int width, int height)
+{
+    for (int row = 0; row < height; row++) {
+        // Compute brightness values for each pixel in the row
+        float brightness[width];
+        for (int col = 0; col < width; col++) {
+            int index = row * width + col;
+            brightness[col] = (float) (in[index].red + in[index].green + in[index].blue) / 3.0f;
+        }
+
+        // Sort pixels in the row by brightness
+        for (int col = 0; col < width; col++) {
+            int max_index = col;
+            for (int j = col + 1; j < width; j++) {
+                if (brightness[j] > brightness[max_index]) {
+                    max_index = j;
+                }
+            }
+            out[row * width + col] = in[row * width + max_index];
+            brightness[max_index] = -1.0f;
+        }
+    }
+}
+
+
+
+
+
 
 // Main function
 int main(int argc, char* argv[]) {
@@ -184,9 +239,17 @@ int main(int argc, char* argv[]) {
     if (b_flag) {
         remove_background(filename, threshold);
     }
+    // =========================== Sort ========================
+    START_TIMER(sort)
     if (s_flag) {
-        pixel_sorting(filename, threshold);
+            sort_by_brightness(input->pixels, output->pixels, width, height);
+            if (g_flag || d_flag) {
+                memcpy(input->pixels, output->pixels, total_pixels * sizeof(pixel_t));
+            }
+            
     }
+    STOP_TIMER(sort)
+    // =========================================================
 
     // Save output image
     START_TIMER(save)
@@ -194,8 +257,8 @@ int main(int argc, char* argv[]) {
     STOP_TIMER(save)
 
     // Display timing results
-    printf("READ: %.6f  GREY: %.6f  BLUR: %.6f  SAVE: %.6f\n",
-           GET_TIMER(read), GET_TIMER(grey), GET_TIMER(blur), GET_TIMER(save));
+    printf("READ: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  SAVE: %.6f\n",
+           GET_TIMER(read), GET_TIMER(grey), GET_TIMER(blur), GET_TIMER(sort), GET_TIMER(save));
 
     free(input);
     free(output);
