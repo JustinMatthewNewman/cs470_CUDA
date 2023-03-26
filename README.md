@@ -1,5 +1,7 @@
 
-# CUDA PNG Image Processing
+# CUDA PNG Image Processing for PixelSorting Effect
+
+![Alt text](/output_file.png "Optional title")
 
 This project handles transparent PNG images using [libpng](http://www.libpng.org/pub/png/libpng.html), the official PNG reference library. It supports almost all PNG features, is extensible, and has been extensively tested for over 23 years.
 
@@ -7,7 +9,10 @@ This project handles transparent PNG images using [libpng](http://www.libpng.org
 
 ```bash
 make
-./serial -b 10 input.png
+./serial -s 100 input.png
+./serial -b 75 input.png
+./serial -g 1 input.png
+./serial -d input.png
 ```
 Setup Instructions
 
@@ -17,7 +22,7 @@ To compile the project, you will need to complete a few setup steps.
 First, configure the build:
 
 ```bash
-tar -xvf libpng-1.6.39.tar.xz
+#tar -xvf libpng-1.6.39.tar.xz
 cd libpng-1.6.39
 ./configure --prefix=$HOME/local
 ```
