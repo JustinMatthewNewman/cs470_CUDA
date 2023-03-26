@@ -1,7 +1,7 @@
 
 # CUDA PNG Image Processing
 
-![Alt text](/input.png "Optional title")
+![Alt text](/output_file.png "Optional title")
 
 This project handles transparent PNG images using [libpng](http://www.libpng.org/pub/png/libpng.html), the official PNG reference library. It supports almost all PNG features, is extensible, and has been extensively tested for over 23 years.
 
