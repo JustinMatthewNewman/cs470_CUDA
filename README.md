@@ -1,5 +1,5 @@
 
-# CUDA PNG Image Processing
+# CUDA PNG Image Processing for PixelSorting Effect
 
 ![Alt text](/output_file.png "Optional title")
 
