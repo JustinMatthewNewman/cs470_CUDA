@@ -17,7 +17,7 @@ To compile the project, you will need to complete a few setup steps.
 First, configure the build:
 
 ```bash
-tar -xvf libpng-1.6.39.tar.xz
+#tar -xvf libpng-1.6.39.tar.xz
 cd libpng-1.6.39
 ./configure --prefix=$HOME/local
 ```
