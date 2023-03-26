@@ -7,7 +7,10 @@ This project handles transparent PNG images using [libpng](http://www.libpng.org
 
 ```bash
 make
-./serial -b 10 input.png
+./serial -s 100 input.png
+./serial -b 75 input.png
+./serial -g 1 input.png
+./serial -d input.png
 ```
 Setup Instructions
 
