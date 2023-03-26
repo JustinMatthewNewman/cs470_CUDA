@@ -64,4 +64,3 @@ gcc serial.c -I$HOME/local/include -L$HOME/local/lib -Wl,-Bstatic -lpng -Wl,-Bdy
 In this command, we use -Wl,-Bstatic and -Wl,-Bdynamic to specify which libraries should be linked statically and which should be linked dynamically. In this case, we are linking libpng statically and other required libraries (like zlib and libm) dynamically.
 
 Note that statically linked binaries will be larger in size, as they include the required libraries. If you prefer a smaller binary size, you can share the dynamically linked binary, but other developers will need to install the libpng library (either using sudo or locally) and set the appropriate environment variables (e.g., LD_LIBRARY_PATH).
-
