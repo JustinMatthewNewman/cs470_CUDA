@@ -1,41 +1,58 @@
-CUDA C Command Line Pixel Sorting Image Processing Project
+[For Users]
 
-This is a project developed by Justin Newman, Andrew Fleming, and TJ Davies for processing images using pixel sorting techniques on NVIDIA GPUs with CUDA C.
-Requirements
 
-    NVIDIA GPU with CUDA capability
-    CUDA Toolkit
-    OpenCV
-    CMake
+Example run:
 
-Installation
+./serial -b 10 input.png
 
-Clone the repository:
 
-    git clone https://github.com/JustinMatthewNewman/cs470_CUDA.git
+[For Developers]
 
-Change to build directory:
+configure the build:
 
-    cd cs470_CUDA
+cd libpng-x.x.x
+./configure --prefix=$HOME/local
 
-Build the project:
+<!-- The --prefix option specifies the installation directory. In this case, we use a directory 
+named local in the user's home directory. You can change this to another location if you prefer. -->
 
-    make serial
+    Compile and install the library:
 
-Usage: Parallel Image Processing <option(s)> image-file :
-  Options are:
-	-d 	desaturate <threshold>
-	-g	gaussian blur <threshold>
-	-r	rotate
-	-b	background removal <threshold>
-	-s	sorting <threshold>
+make
+make install
 
-Example usage:
+<!-- Now you have libpng installed in the specified directory (e.g., $HOME/local).
 
-./serial input.jpg -s 100
+    To use the locally installed libpng library, you will need to update the compiler and linker flags in your build process. Add -I$HOME/local/include to the compiler flags and -L$HOME/local/lib -lpng to the linker flags.
 
-References
+For example, if you were compiling the serial.c file mentioned in the previous answer, you would use the following command: -->
 
-    CUDA Toolkit Documentation: https://docs.nvidia.com/cuda/index.html
-    OpenCV Documentation: https://docs.opencv.org/
-    CMake Documentation: https://cmake.org/docu
+
+gcc serial.c -I$HOME/local/include -L$HOME/local/lib -lpng -o serial
+
+    Finally, you'll need to update the LD_LIBRARY_PATH environment variable to include the path to the locally installed libpng library, so that the runtime linker can find it:
+
+
+export LD_LIBRARY_PATH=$HOME/local/lib:$LD_LIBRARY_PATH
+
+You can add this line to your .bashrc or .bash_profile file to make it permanent. Now you should be able to use the libpng library without sudo access.
+
+
+
+If you want to share your compiled code with others, they won't need to perform these steps as long as the shared binary is built with the required libraries (statically linked). When you compile your code with static linking, the necessary library files are included directly in the compiled binary, so other developers won't need to install the library separately.
+
+To compile your code with static linking, you need to compile the libpng library with the --enable-static option:
+
+bash
+
+./configure --prefix=$HOME/local --enable-static
+
+Then, compile your code using the static version of the library:
+
+bash
+
+gcc serial.c -I$HOME/local/include -L$HOME/local/lib -Wl,-Bstatic -lpng -Wl,-Bdynamic -lz -lm -o serial
+
+In this command, we use -Wl,-Bstatic and -Wl,-Bdynamic to specify which libraries should be linked statically and which should be linked dynamically. In this case, we are linking libpng statically and other required libraries (like zlib and libm) dynamically.
+
+Note that statically linked binaries will be larger in size, as they include the required libraries. If you prefer a smaller binary size, you can share the dynamically linked binary, but other developers will need to install the libpng library (either using sudo or locally) and set the appropriate environment variables (e.g., LD_LIBRARY_PATH).
