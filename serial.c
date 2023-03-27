@@ -28,7 +28,6 @@ void usage();
 void
 rotate_90(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
   int height, size_t row_size) {
-  /*
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       png_bytep in_pixel = & in_row_pointers[y][x * 4];
@@ -39,7 +38,7 @@ rotate_90(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
       out_pixel[3] = in_pixel[3];
     }
   }
-  */
+  
 }
 
 // =======================================================================
@@ -507,8 +506,10 @@ main(int argc, char * argv[]) {
 
   for (int y = 0; y < height; y++) {
     free(in_row_pointers[y]);
-    free(out_row_pointers[y]);
+    if (! r_flag)
+      free(out_row_pointers[y]);
   }
+
   free(in_row_pointers);
   free(out_row_pointers);
   return 0;
