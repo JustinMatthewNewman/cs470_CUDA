@@ -1,20 +1,31 @@
 
 # CUDA PNG Image Processing for PixelSorting Effect
 
-![Alt text](/output_file.png "Optional title")
+![Alt text](/encode_video/frames/frame_150.png "Optional title")
 
 This project handles transparent PNG images using [libpng](http://www.libpng.org/pub/png/libpng.html), the official PNG reference library. It supports almost all PNG features, is extensible, and has been extensively tested for over 23 years.
 
 ## Example Run
 
 ```bash
+make clean
 make
 ./serial -s 100 input.png output.png
 ./serial -b 75 input.png output.png
 ./serial -g 1 input.png output.png
 ./serial -d input.png output.png
 ```
-Setup Instructions
+
+Now try exporting a video.
+
+```bash
+bash export_video.sh input.png
+```
+
+
+=======================================================================
+
+Setup Troubleshooting Instructions
 
 To compile the project, you will need to complete a few setup steps.
 1. Install libpng
