@@ -77,21 +77,23 @@ get_next_non_white_x(png_bytep * row_pixels, int x, int width,
 }
 
 // Helper function to get the next white x value in the row
-int
-get_next_white_x(png_bytep * row_pixels, int x, int width, int white_threshold) {
+int get_next_white_x(png_bytep * row_pixels, int x, int width, int white_threshold) {
   x++;
   while (true) {
+    if (x >= width) {
+      return width - 1;
+    }
+
     png_bytep pixel = row_pixels[x];
     int brightness = get_brightness(pixel);
+
     if (brightness >= white_threshold) {
       return x - 1;
     }
     x++;
-    if (x >= width) {
-      return width - 1;
-    }
   }
 }
+
 
 /**
  * Sort Pixels by brightness
@@ -143,6 +145,7 @@ pixel_sort(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
     while (x_end < width - 1) {
       x_start = get_next_non_white_x(row_pixels, x_start, width, threshold);
       x_end = get_next_white_x(row_pixels, x_start, width, threshold);
+           // printf("segfault is here\n");
       if (x_start < 0)
         break;
       int sorting_length = x_end - x_start;
@@ -156,9 +159,11 @@ pixel_sort(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
         row_pixels[x_start + i] = sorted[i];
       }
 
+
       x_start = x_end + 1;
       free(unsorted);
       free(sorted);
+
     }
     for (int x = 0; x < width; x++) {
       png_bytep in_pixel = row_pixels[x];
