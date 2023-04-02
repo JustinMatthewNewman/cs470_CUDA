@@ -58,6 +58,7 @@ main (int argc, char *argv[])
   else
     {
       printf ("Error: no input image file specified\n");
+      usage ();
       return 1;
     }
 
@@ -68,6 +69,7 @@ main (int argc, char *argv[])
   else
     {
       printf ("Error: no output image file specified\n");
+      usage ();
       return 1;
     }
 
@@ -87,10 +89,16 @@ main (int argc, char *argv[])
   STOP_TIMER (read);
   // =============================================================
 
-  out_row_pointers = (png_bytep *)malloc (height * sizeof (png_bytep));
-  for (png_uint_32 i = 0; i < height; i++)
+  int new_height = height;
+  int new_width = width;
+  if (r_flag) {
+    new_height = width;
+    new_width = height;
+  }
+  out_row_pointers = (png_bytep *)malloc (new_height * sizeof (png_bytep));
+  for (png_uint_32 i = 0; i < new_height; i++)
     {
-      out_row_pointers[i] = (png_byte *)malloc (width * 4 * sizeof (png_byte));
+      out_row_pointers[i] = (png_byte *)malloc (new_width * 4 * sizeof (png_byte));
     }
 
   // // =========================== Grey ========================
@@ -150,15 +158,19 @@ main (int argc, char *argv[])
   STOP_TIMER (save)
   // Display timing results
   printf ("READ: %.6f  BACKGROUND: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  "
-          "SAVE: %.6f\n",
+          "ROTATE: %.6f  SAVE: %.6f\n",
           GET_TIMER (read), GET_TIMER (background), GET_TIMER (grey),
-          GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (save));
+          GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (save));
   for (png_uint_32 i = 0; i < height; i++)
     {
       free (in_row_pointers[i]);
-      free (out_row_pointers[i]);
+      if (!r_flag) {
+        free (out_row_pointers[i]);
+      }
     }
   free (in_row_pointers);
-  free (out_row_pointers);
+  if (!r_flag) {
+    free (out_row_pointers);
+  }
   return 0;
 }
