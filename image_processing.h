@@ -35,29 +35,19 @@ void background_removal(png_bytep *in_row_pointers, png_bytep *out_row_pointers,
 // ============================= Rotate ==================================
 
 /**
- *
- * Currently broken and unimplemented
- *
+ * Rotates the provided image 90 degrees to the right
  */
 void
 rotate_90(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
   int height) {
-  printf("Width: %d, Height %d\n", width, height);
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      if (x >= width) {
-        printf("%d\n", width);
-        printf("WHAT????????????????????????????????????????????????\n");
-      }
-      printf("%d, %d attempt... ", x, y);
-      fflush(stdout);
       png_bytep in_pixel = & in_row_pointers[y][x * 4];
       png_bytep out_pixel = & out_row_pointers[x][(height - y - 1) * 4];
       out_pixel[0] = in_pixel[0];
       out_pixel[1] = in_pixel[1];
       out_pixel[2] = in_pixel[2];
       out_pixel[3] = in_pixel[3];
-      printf("success!!!\n");
     }
   }
   

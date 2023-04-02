@@ -149,10 +149,11 @@ main (int argc, char *argv[])
   // =========================================================
 
   START_TIMER (save)
-  if (write_png (output_filename, width, height, bit_depth, color_type,
+  if (write_png (output_filename, new_width, new_height, bit_depth, color_type,
                  out_row_pointers)
       != 0)
     {
+      printf("Failed to write to PNG\n");
       return 1;
     }
   STOP_TIMER (save)
