@@ -13,16 +13,21 @@ main (int argc, char *argv[])
 {
   int opt;
   int threshold;
+  int target_x;
+  int target_y;
   bool d_flag = false;
   bool g_flag = false;
   bool r_flag = false;
   bool b_flag = false;
+  bool a_flag = false;
+  bool f_flag = false;
+  bool t_flag = false;
   bool s_flag = false;
   char *input_filename = NULL;
   char *output_filename = NULL;
 
   // Parse the command line options
-  while ((opt = getopt (argc, argv, "dg:rb:s:")) != -1)
+  while ((opt = getopt (argc, argv, "dg:rb:a:f:t:s:")) != -1)
     {
       switch (opt)
         {
@@ -35,10 +40,24 @@ main (int argc, char *argv[])
           break;
         case 'r':
           r_flag = true;
-          break;
+          break;          
         case 'b':
           b_flag = true;
           threshold = atoi (optarg);
+          break;
+        case 'a':
+          a_flag = true;
+          threshold = atoi (optarg);
+          break;
+        case 'f':
+          f_flag = true;
+          threshold = atoi (optarg);
+          break;
+        case 't':
+          t_flag = true;
+          threshold = atoi (optarg);
+          target_x = atoi (argv[optind++]);
+          target_y = atoi (argv[optind++]);
           break;
         case 's':
           s_flag = true;
@@ -135,8 +154,27 @@ main (int argc, char *argv[])
       background_removal (in_row_pointers, out_row_pointers, width, height,
                           threshold);
     }
+  // ============================== BGA remove ===================
+  if (a_flag)
+    {
+      background_removal_averaging (in_row_pointers, out_row_pointers, width,
+                                    height, threshold);
+    }
+  // ======================== Fore remove =======================
+  if (f_flag)
+    {
+      foreground_removal (in_row_pointers, out_row_pointers, width, height,
+                          threshold);
+    }
+  // ======================== Targeting =======================
+  if (t_flag)
+    {
+      target_removal (in_row_pointers, out_row_pointers, width, height, threshold,
+                 target_x, target_y);
+    }
   STOP_TIMER (background)
   // ============================================================
+
 
   // // =========================== Sort ========================
   START_TIMER (sort)

@@ -29,7 +29,17 @@ void gaussian_blur(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int 
 
 void greyscale(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int width, int height);
 
-void background_removal(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int width, int height, int threshold);
+void background_removal(png_bytep *in_row_pointers, png_bytep *out_row_pointers, 
+                        int width, int height, int threshold);
+
+void background_removal_averaging(png_bytep *in_row_pointers, png_bytep *out_row_pointers, 
+                                  int width, int height, int threshold);
+
+void foreground_removal(png_bytep *in_row_pointers, png_bytep *out_row_pointers, 
+                        int width, int height, int threshold);
+
+void target_removal(png_bytep *in_row_pointers, png_bytep *out_row_pointers, 
+                int width, int height, int threshold, int target_x, int target_y);
 
 
 // ============================= Rotate ==================================
@@ -55,6 +65,8 @@ rotate_90(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
 
 // =======================================================================
 
+// =======================================================================
+
 
 
 // ========================= Utilities ===================================
@@ -68,6 +80,9 @@ usage() {
   printf("\t-g\tgaussian blur <threshold>\n");
   printf("\t-r\trotate\n");
   printf("\t-b\tbackground removal <threshold>\n");
+  printf("\t-a\tbackground removal averaging <threshold>\n");
+  printf("\t-f\tforeground removal <threshold>\n");
+  printf("\t-t\ttarget removal <threshold> <target-x> <target-y>\n");
   printf("\t-s\tsorting <threshold>\n");
 }
 
@@ -281,7 +296,7 @@ background_removal(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
       // Compare absolute difference between input and input_copy.
       // If the difference is less than the threshold, set the output to
       // transparent.
-      if (abs(in_pixel[0] - grey_threshold) > threshold) {
+      if (abs(in_pixel[0] - grey_threshold) < threshold) {
         out_pixel[0] = 0;
         out_pixel[1] = 0;
         out_pixel[2] = 0;
@@ -296,7 +311,131 @@ background_removal(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
   }
 }
 
+// ==========================================================================
 
 
+// ==================== Background Removal Averaging =========================
+
+void
+background_removal_averaging(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
+  int width, int height, int threshold) {
+  // Average a 75x75 pixel grid to get the background color
+  int background_r = 0, background_g = 0, background_b = 0;
+  int grid_size = 75;
+  // First, get the average color of the top left corner
+  for (int y = 0; y < grid_size; y++) {
+    for (int x = 0; x < grid_size; x++) {
+      png_bytep in_pixel = & in_row_pointers[y][x * 4];
+      background_r += in_pixel[0];
+      background_g += in_pixel[1];
+      background_b += in_pixel[2];
+    }
+  }
+  background_r /= grid_size * grid_size;
+  background_g /= grid_size * grid_size;
+  background_b /= grid_size * grid_size;
+
+  // Compare the average color of the top left corner to the rest of the image
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      png_bytep in_pixel = & in_row_pointers[y][x * 4];
+      png_bytep out_pixel = & out_row_pointers[y][x * 4];
+      // Compare absolute difference between input and input_copy.
+      if (abs(in_pixel[0] - background_r) < threshold &&
+        abs(in_pixel[1] - background_g) < threshold &&
+        abs(in_pixel[2] - background_b) < threshold) {
+        out_pixel[0] = 0;
+        out_pixel[1] = 0;
+        out_pixel[2] = 0;
+        out_pixel[3] = 0; // Set alpha channel to 0 for transparency
+      } else {
+        out_pixel[0] = in_pixel[0];
+        out_pixel[1] = in_pixel[1];
+        out_pixel[2] = in_pixel[2];
+        out_pixel[3] = in_pixel[3]; // Preserve the alpha channel
+      }
+    }
+  }
+}
+
+// ==========================================================================
+
+// =========================== Foreground Removal ===========================
+
+void
+foreground_removal(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
+  int width, int height, int threshold) {
+  // Convert the input_copy to greyscale
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      png_bytep in_pixel = & in_row_pointers[y][x * 4];
+      png_bytep out_pixel = & out_row_pointers[y][x * 4];
+      int grey = (in_pixel[0] + in_pixel[1] + in_pixel[2]) / 3;
+      // Saturate the input_copy by thresholding
+      int grey_threshold = (grey < threshold) ? 0 : grey;
+
+      if (abs(in_pixel[0] - grey_threshold) < threshold)  {
+        out_pixel[0] = in_pixel[0];
+        out_pixel[1] = in_pixel[1];
+        out_pixel[2] = in_pixel[2];
+        out_pixel[3] = in_pixel[3]; // Preserve the alpha channel
+      } else {
+        out_pixel[0] = 0;
+        out_pixel[1] = 0;
+        out_pixel[2] = 0;
+        out_pixel[3] = 0; // Set alpha channel to 0 for transparency
+      }
+    }
+  }
+}
+
+// ==========================================================================
+
+// ========================== Targeting =====================================
+
+void
+target_removal(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
+  int width, int height, int threshold, int target_x, int target_y) {
+
+    // Average a 50x50 pixel grid around the target to get the background color
+    int background_r = 0, background_g = 0, background_b = 0;
+    int grid_size = 25;
+
+    // First, get the average color of the target area
+    for (int y = target_y - grid_size / 2; y < target_y + grid_size / 2; y++) {
+      for (int x = target_x - grid_size / 2; x < target_x + grid_size / 2; x++) {
+        png_bytep in_pixel = & in_row_pointers[y][x * 4];
+        background_r += in_pixel[0];
+        background_g += in_pixel[1];
+        background_b += in_pixel[2];
+      }
+    }
+
+    background_r /= grid_size * grid_size;
+    background_g /= grid_size * grid_size;
+    background_b /= grid_size * grid_size;
+
+    // Compare the average color of the target area to the rest of the image
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        png_bytep in_pixel = & in_row_pointers[y][x * 4];
+        png_bytep out_pixel = & out_row_pointers[y][x * 4];
+
+        if (abs(in_pixel[0] - background_r) < threshold &&
+          abs(in_pixel[1] - background_g) < threshold &&
+          abs(in_pixel[2] - background_b) < threshold) {
+          out_pixel[0] = 0;
+          out_pixel[1] = 0;
+          out_pixel[2] = 0;
+          out_pixel[3] = 0; // Set alpha channel to 0 for transparency
+        } else {
+          out_pixel[0] = in_pixel[0];
+          out_pixel[1] = in_pixel[1];
+          out_pixel[2] = in_pixel[2];
+          out_pixel[3] = in_pixel[3]; // Preserve the alpha channel
+        }
+      }
+    }
+  }
 
 #endif // IMAGE_PROCESSING_H
