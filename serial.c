@@ -69,7 +69,6 @@ main (int argc, char *argv[])
   else
     {
       printf ("Error: no output image file specified\n");
-      usage ();
       return 1;
     }
 
