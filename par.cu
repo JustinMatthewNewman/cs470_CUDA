@@ -1,4 +1,4 @@
-#include "image_processing.h"
+#include "par_image_processing.h"
 #include "png_io.h"
 #include "timer.h"
 #include <getopt.h>
@@ -7,6 +7,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+// Constants for CUDA
+int NBLOCKS = 1;
+int NTHREADS = 3;
 
 int
 main (int argc, char *argv[])
@@ -95,6 +99,7 @@ main (int argc, char *argv[])
   int bit_depth, color_type;
   png_bytepp in_row_pointers;
   png_bytepp out_row_pointers;
+  png_bytepp cuda_in_row_pointers;
 
   // =========================== READ ============================
   START_TIMER (read)
@@ -107,16 +112,40 @@ main (int argc, char *argv[])
   STOP_TIMER (read);
   // =============================================================
 
+
+    /*
+  cudaMallocManaged(&cuda_in_row_pointers, height * sizeof (png_bytep));
+  for (png_uint_32 i = 0; i < height; i++)
+    {
+      cudaMallocManaged(&cuda_in_row_pointers[i], width * 4 * sizeof(png_byte));
+    }
+  
+//  printf("Height: %d, Width: %d\n", height, width);
+  for (png_uint_32 i = 0; i < height; i++)
+    {
+      for (png_uint_32 j = 0; j < width * 4; j++)
+        {
+          //printf("NEW VAL: %d ", in_row_pointers[i][j]);
+          cuda_in_row_pointers[i][j] = in_row_pointers[i][j];
+          //printf("(%d, %d)\n", i, j);
+          //fflush(stdout);
+        }
+    }
+    */
+    
+
   int new_height = height;
   int new_width = width;
+
   if (r_flag) {
     new_height = width;
     new_width = height;
   }
-  out_row_pointers = (png_bytep *)malloc (new_height * sizeof (png_bytep));
+
+  cudaMallocManaged(&out_row_pointers, new_height * sizeof (png_bytep));
   for (png_uint_32 i = 0; i < new_height; i++)
     {
-      out_row_pointers[i] = (png_byte *)malloc (new_width * 4 * sizeof (png_byte));
+      cudaMallocManaged(&out_row_pointers[i], new_width * 4 * sizeof(png_byte));
     }
 
   // // =========================== Grey ========================
@@ -142,7 +171,8 @@ main (int argc, char *argv[])
   START_TIMER (rotate)
   if (r_flag)
     {
-      rotate_90 (in_row_pointers, out_row_pointers, width, height);
+      rotate_90<<<NBLOCKS, NTHREADS/NBLOCKS>>>
+        (in_row_pointers, out_row_pointers, width, height);
     }
   STOP_TIMER (rotate)
   // // =========================================================
@@ -185,6 +215,8 @@ main (int argc, char *argv[])
   STOP_TIMER (sort)
   // =========================================================
 
+  printf("BEFORE SAVE\n");
+  fflush(stdout);
   START_TIMER (save)
   if (write_png (output_filename, new_width, new_height, bit_depth, color_type,
                  out_row_pointers)
@@ -194,21 +226,29 @@ main (int argc, char *argv[])
       return 1;
     }
   STOP_TIMER (save)
+  printf("AFTER SAVE\n");
+  fflush(stdout);
   // Display timing results
   printf ("READ: %.6f  BACKGROUND: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  "
           "ROTATE: %.6f  SAVE: %.6f\n",
           GET_TIMER (read), GET_TIMER (background), GET_TIMER (grey),
           GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (save));
+
+  /*
   for (png_uint_32 i = 0; i < height; i++)
     {
-      free (in_row_pointers[i]);
+      cudaFree (cuda_in_row_pointers[i]);
       if (!r_flag) {
-        free (out_row_pointers[i]);
+        cudaFree (out_row_pointers[i]);
       }
     }
-  free (in_row_pointers);
+
+  
+  cudaFree (cuda_in_row_pointers);
   if (!r_flag) {
-    free (out_row_pointers);
+    cudaFree (out_row_pointers);
   }
+  */
+  cudaDeviceSynchronize();
   return 0;
 }
