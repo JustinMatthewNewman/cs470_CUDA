@@ -66,6 +66,9 @@ int write_png(const char *filename, png_uint_32 width, png_uint_32 height, int b
         fprintf(stderr, "Failed to create png write struct.\n");
         return 1;
     }
+    // Disable compression
+    png_set_compression_level (png_ptr, 0);
+
     png_infop info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr) {
         png_destroy_write_struct(&png_ptr, NULL);

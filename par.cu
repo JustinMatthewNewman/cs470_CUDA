@@ -141,6 +141,9 @@ main (int argc, char *argv[])
       cudaMallocManaged(&out_row_pointers[i], new_width * 4 * sizeof(png_byte));
     }
 
+  int blockSize = 256;
+  int numBlocks = (width * height + blockSize - 1) / blockSize;
+
   // // =========================== Grey ========================
   START_TIMER (grey)
   if (d_flag)
@@ -165,8 +168,9 @@ main (int argc, char *argv[])
   START_TIMER (rotate)
   if (r_flag)
     {
-      rotate_90<<<NBLOCKS, NTHREADS/NBLOCKS>>>
+      rotate_90<<<numBlocks, blockSize>>>
         (cuda_in_row_pointers, out_row_pointers, width, height);
+        cudaDeviceSynchronize();
     }
   STOP_TIMER (rotate)
   // // =========================================================
