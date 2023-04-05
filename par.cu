@@ -112,26 +112,19 @@ main (int argc, char *argv[])
   STOP_TIMER (read);
   // =============================================================
 
-
-    /*
   cudaMallocManaged(&cuda_in_row_pointers, height * sizeof (png_bytep));
   for (png_uint_32 i = 0; i < height; i++)
     {
       cudaMallocManaged(&cuda_in_row_pointers[i], width * 4 * sizeof(png_byte));
     }
   
-//  printf("Height: %d, Width: %d\n", height, width);
   for (png_uint_32 i = 0; i < height; i++)
     {
       for (png_uint_32 j = 0; j < width * 4; j++)
         {
-          //printf("NEW VAL: %d ", in_row_pointers[i][j]);
           cuda_in_row_pointers[i][j] = in_row_pointers[i][j];
-          //printf("(%d, %d)\n", i, j);
-          //fflush(stdout);
         }
     }
-    */
     
 
   int new_height = height;
@@ -172,7 +165,7 @@ main (int argc, char *argv[])
   if (r_flag)
     {
       rotate_90<<<NBLOCKS, NTHREADS/NBLOCKS>>>
-        (in_row_pointers, out_row_pointers, width, height);
+        (cuda_in_row_pointers, out_row_pointers, width, height);
     }
   STOP_TIMER (rotate)
   // // =========================================================
@@ -215,8 +208,7 @@ main (int argc, char *argv[])
   STOP_TIMER (sort)
   // =========================================================
 
-  printf("BEFORE SAVE\n");
-  fflush(stdout);
+  cudaDeviceSynchronize();
   START_TIMER (save)
   if (write_png (output_filename, new_width, new_height, bit_depth, color_type,
                  out_row_pointers)
@@ -226,15 +218,13 @@ main (int argc, char *argv[])
       return 1;
     }
   STOP_TIMER (save)
-  printf("AFTER SAVE\n");
-  fflush(stdout);
+
   // Display timing results
   printf ("READ: %.6f  BACKGROUND: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  "
           "ROTATE: %.6f  SAVE: %.6f\n",
           GET_TIMER (read), GET_TIMER (background), GET_TIMER (grey),
           GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (save));
 
-  /*
   for (png_uint_32 i = 0; i < height; i++)
     {
       cudaFree (cuda_in_row_pointers[i]);
@@ -248,7 +238,5 @@ main (int argc, char *argv[])
   if (!r_flag) {
     cudaFree (out_row_pointers);
   }
-  */
-  cudaDeviceSynchronize();
   return 0;
 }
