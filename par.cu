@@ -145,7 +145,8 @@ main (int argc, char *argv[])
   START_TIMER (grey)
   if (d_flag)
     {
-      greyscale (in_row_pointers, out_row_pointers, width, height);
+      greyscale<<<NBLOCKS, NTHREADS/NBLOCKS>>>
+        (cuda_in_row_pointers, out_row_pointers, width, height);
     }
   STOP_TIMER (grey)
   // // =========================================================

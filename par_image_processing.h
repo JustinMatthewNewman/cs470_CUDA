@@ -28,6 +28,7 @@ double *create_gaussian_kernel(int radius, double sigma);
 
 void gaussian_blur(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int width, int height, int radius, double sigma);
 
+__global__
 void greyscale(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int width, int height);
 
 void background_removal(png_bytep *in_row_pointers, png_bytep *out_row_pointers, 
@@ -267,10 +268,13 @@ gaussian_blur(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
 
 // ================================== Desaturation =============================
 
+__global__
 void
 greyscale(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
   int height) {
-  for (int y = 0; y < height; y++) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  for (int y = index; y < height; y += stride) {
     for (int x = 0; x < width; x++) {
       png_bytep in_pixel = & in_row_pointers[y][x * 4];
       png_bytep out_pixel = & out_row_pointers[y][x * 4];
@@ -278,6 +282,7 @@ greyscale(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
       out_pixel[0] = grey;
       out_pixel[1] = grey;
       out_pixel[2] = grey;
+
       // Preserve the alpha channel
       out_pixel[3] = in_pixel[3];
     }
