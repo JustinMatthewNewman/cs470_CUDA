@@ -179,8 +179,9 @@ main (int argc, char *argv[])
   START_TIMER (background)
   if (b_flag)
     {
-      background_removal (in_row_pointers, out_row_pointers, width, height,
-                          threshold);
+      background_removal<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, width,
+                                  height, threshold);
+      cudaDeviceSynchronize();
     }
   // ============================== BGA remove ===================
   if (a_flag)

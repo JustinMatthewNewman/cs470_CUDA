@@ -154,7 +154,14 @@ main (int argc, char *argv[])
           GET_TIMER (background), GET_TIMER (save));
 
   // Free the memory
-  cudaFree (in_row_pointers);
+  free (in_row_pointers);
+
+  for (png_uint_32 i = 1; i < height; i++)
+  {
+    cudaFree (cuda_in_row_pointers[i]);
+    cudaFree (out_row_pointers[i]);
+  }
+
   cudaFree (out_row_pointers);
   cudaFree (cuda_in_row_pointers);
 

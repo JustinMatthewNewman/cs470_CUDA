@@ -31,6 +31,7 @@ void gaussian_blur(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int 
 __global__
 void greyscale(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int width, int height);
 
+__global__
 void background_removal(png_bytep *in_row_pointers, png_bytep *out_row_pointers, 
                         int width, int height, int threshold);
 
@@ -293,33 +294,41 @@ greyscale(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
 
 // ============================== Background Removal ========================
 
-void
-background_removal(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
-  int width, int height, int threshold) {
-  // Convert the input_copy to greyscale
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      png_bytep in_pixel = & in_row_pointers[y][x * 4];
-      png_bytep out_pixel = & out_row_pointers[y][x * 4];
+__global__ void
+background_removal (png_bytepp in_row_pointers, png_bytepp out_row_pointers,
+                    int width, int height, int threshold)
+{
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+
+  for (int i = index; i < width * height; i += stride)
+    {
+      int x = i % width;
+      int y = i / width;
+
+      // get the pixel
+      png_bytep in_pixel = &in_row_pointers[y][x * 4];
+      png_bytep out_pixel = &out_row_pointers[y][x * 4];
+
       int grey = (in_pixel[0] + in_pixel[1] + in_pixel[2]) / 3;
       // Saturate the input_copy by thresholding
       int grey_threshold = (grey < threshold) ? 0 : grey;
-      // Compare absolute difference between input and input_copy.
-      // If the difference is less than the threshold, set the output to
-      // transparent.
-      if (abs(in_pixel[0] - grey_threshold) < threshold) {
-        out_pixel[0] = 0;
-        out_pixel[1] = 0;
-        out_pixel[2] = 0;
-        out_pixel[3] = 0; // Set alpha channel to 0 for transparency
-      } else {
-        out_pixel[0] = in_pixel[0];
-        out_pixel[1] = in_pixel[1];
-        out_pixel[2] = in_pixel[2];
-        out_pixel[3] = in_pixel[3]; // Preserve the alpha channel
-      }
+
+      if (abs (in_pixel[0] - grey_threshold) < threshold)
+        { 
+          out_pixel[0] = 150;
+          out_pixel[1] = 150;
+          out_pixel[2] = 150;
+          out_pixel[3] = 75;
+        }
+      else
+        {
+          out_pixel[0] = in_pixel[0];
+          out_pixel[1] = in_pixel[1];
+          out_pixel[2] = in_pixel[2];
+          out_pixel[3] = in_pixel[3];
+        }
     }
-  }
 }
 
 // ==========================================================================
