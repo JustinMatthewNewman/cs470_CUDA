@@ -150,6 +150,7 @@ main (int argc, char *argv[])
     {
       greyscale<<<numBlocks, blockSize>>>
         (cuda_in_row_pointers, out_row_pointers, width, height);
+      cudaDeviceSynchronize();
     }
   STOP_TIMER (grey)
   // // =========================================================
