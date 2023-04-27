@@ -99,6 +99,7 @@ main (int argc, char *argv[])
   int bit_depth, color_type;
   png_bytepp in_row_pointers;
   png_bytepp out_row_pointers;
+  png_bytepp mid_row_pointers;
   png_bytepp cuda_in_row_pointers;
 
   // =========================== READ ============================
@@ -136,13 +137,17 @@ main (int argc, char *argv[])
   }
 
   cudaMallocManaged(&out_row_pointers, new_height * sizeof (png_bytep));
+  cudaMallocManaged(&mid_row_pointers, new_height * sizeof (png_bytep));
   for (png_uint_32 i = 0; i < new_height; i++)
     {
       cudaMallocManaged(&out_row_pointers[i], new_width * 4 * sizeof(png_byte));
+      cudaMallocManaged(&mid_row_pointers[i], new_width * 4 * sizeof(png_byte));
     }
 
   int blockSize = 256;
   int numBlocks = (width * height + blockSize - 1) / blockSize;
+  // dim3 dimGrid((height-1)/16 + 1, (width-1)/16+1, 1);
+  // dim3 dimBlock(16,16,1);
 
   // // =========================== Grey ========================
   START_TIMER (grey)
@@ -180,8 +185,8 @@ main (int argc, char *argv[])
   START_TIMER (background)
   if (b_flag)
     {
-      background_removal<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, width,
-                                  height, threshold);
+      background_removal<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, 
+                            mid_row_pointers, width, height, threshold);
       cudaDeviceSynchronize();
     }
   // ============================== BGA remove ===================
@@ -234,16 +239,16 @@ main (int argc, char *argv[])
 
   for (png_uint_32 i = 0; i < height; i++)
     {
+      cudaFree (mid_row_pointers[i]);
       cudaFree (cuda_in_row_pointers[i]);
       if (!r_flag) {
         cudaFree (out_row_pointers[i]);
       }
     }
 
-  
+  cudaFree (mid_row_pointers);
   cudaFree (cuda_in_row_pointers);
-  if (!r_flag) {
-    cudaFree (out_row_pointers);
-  }
+  cudaFree (out_row_pointers);
+
   return 0;
 }
