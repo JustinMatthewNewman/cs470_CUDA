@@ -286,17 +286,36 @@ void
 background_removal(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
   int width, int height, int threshold) {
   // Convert the input_copy to greyscale
+
+  // get the pixel at coordinate 10, 10
+  png_bytep back_pixel = &in_row_pointers[15][15 * 4];
+
+
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       png_bytep in_pixel = & in_row_pointers[y][x * 4];
       png_bytep out_pixel = & out_row_pointers[y][x * 4];
-      int grey = (in_pixel[0] + in_pixel[1] + in_pixel[2]) / 3;
-      // Saturate the input_copy by thresholding
-      int grey_threshold = (grey < threshold) ? 0 : grey;
-      // Compare absolute difference between input and input_copy.
-      // If the difference is less than the threshold, set the output to
-      // transparent.
-      if (abs(in_pixel[0] - grey_threshold) < threshold) {
+  
+      // Background removal technique inspired by Ian Chu Te
+      // https://www.kaggle.com/code/ianchute/background-removal-cieluv-color-thresholding/notebook
+
+      // create grey scale pixel colors
+      float back_r = back_pixel[0];
+      float back_g = back_pixel[1];
+      float back_b = back_pixel[2];
+
+      // get mean of the red pixel
+      float red_mean = (back_r + in_pixel[0]) / 2;
+
+      float diff_r = abs(in_pixel[0] - back_r);
+      float diff_g = abs(in_pixel[1] - back_g);
+      float diff_b = abs(in_pixel[2] - back_b);
+
+      // https://www.compuphase.com/cmetric.htm
+      float distance = sqrt((2 + (red_mean/256)) * pow(diff_r, 2) + 4 * pow(diff_g, 2) + 
+                              (2 + ((255 - red_mean)/256)) * pow(diff_b, 2));
+                           
+      if (distance < (float) threshold) {
         out_pixel[0] = 0;
         out_pixel[1] = 0;
         out_pixel[2] = 0;
@@ -309,6 +328,82 @@ background_removal(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
       }
     }
   }
+  
+  // int passes = 0;
+
+  // while (passes < 2)
+  // {
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+
+      // get the median of the pixels using the local pixel values 
+      // get the surrounding pixels
+      short local_red[25];
+      short local_green[25];
+      short local_blue[25];
+
+      for (int j = 0; j < 25; j++)
+      {
+          int x_offset = j % 5;
+          int y_offset = j / 5;
+
+          int src_x = x + x_offset - 1;
+          int src_y = y + y_offset - 1;
+
+        if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height)
+        {
+          png_bytep in_pixel = &out_row_pointers[src_y][src_x * 4];
+          local_red[j] = in_pixel[0];
+          local_green[j] = in_pixel[1];
+          local_blue[j] = in_pixel[2];
+        }
+      }
+
+      // sort the local pixels. shift all of the colors at once based on their index
+      for (int j = 0; j < 25; j++)
+      {
+        for (int k = j + 1; k < 25; k++)
+        {
+          float j_avg = (local_red[j] + local_green[j] + local_blue[j]) / 3;
+          float k_avg = (local_red[k] + local_green[k] + local_blue[k]) / 3;
+          if (j_avg > k_avg)
+          {
+            short temp_red = local_red[j];
+            local_red[j] = local_red[k];
+            local_red[k] = temp_red;
+
+            short temp_green = local_green[j];
+            local_green[j] = local_green[k];
+            local_green[k] = temp_green;
+
+            short temp_blue = local_blue[j];
+            local_blue[j] = local_blue[k];
+            local_blue[k] = temp_blue;
+          }
+        }
+      }
+      // get the pixel
+      png_bytep out_pixel = &out_row_pointers[y][x * 4];
+      // set the median of the pixels
+      out_pixel[0] = local_red[12];
+      out_pixel[1] = local_green[12];
+      out_pixel[2] = local_blue[12];
+      
+      // if the pixel used to be a background pixel but is now a foreground pixel, 
+      // set the alpha channel to 255
+      if (out_pixel[0] != 0 && out_pixel[1] != 0 && out_pixel[2] != 0)
+      {
+        out_pixel[3] = 255;
+      }
+      else
+      {
+        out_pixel[3] = 0;
+      }
+    }
+  }
+  //   passes += 1;
+  // }
+  
 }
 
 // ==========================================================================
