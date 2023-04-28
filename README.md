@@ -62,7 +62,7 @@ Finally, you'll need to update the LD_LIBRARY_PATH environment variable to inclu
 ```bash
 export LD_LIBRARY_PATH=$HOME/local/lib:$LD_LIBRARY_PATH
 ```
-You can add this line to your .bashrc or .bash_profile file to make it permanent. Now you should be able to use the libpng library without sudo access.
+You can add this line to your .bashrc or .bash_profile file to make it permanent. Now you should be able to use the libpng library without sudo access. It may be necessary to compile libpng again, as we did in step 1.
 Sharing Compiled Code
 
 If you want to share your compiled code with others, they won't need to perform these steps as long as the shared binary is built with the required libraries (statically linked). When you compile your code with static linking, the necessary library files are included directly in the compiled binary, so other developers won't need to install the library separately.
