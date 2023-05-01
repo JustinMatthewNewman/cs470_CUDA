@@ -26,7 +26,7 @@ main (int argc, char *argv[])
   char *input_filename = NULL;
   char *output_filename = NULL;
 
-  // Parse the command line options
+  // Parse the command line options //maybe want to include image comparison here?
   while ((opt = getopt (argc, argv, "dg:rb:a:f:t:s:")) != -1)
     {
       switch (opt)
