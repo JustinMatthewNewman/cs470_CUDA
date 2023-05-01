@@ -1,4 +1,4 @@
-//gcc compare_image.c -o compare
+//gcc compare_image.c -o compare to compile
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
   int opt;
   while ((opt = getopt(argc, argv, "c")) != -1) {
     switch (opt) {
-      case 'c':
+      case 'c': //do we need anything else other than image % comparison?
         cflag = 1;
         break;
       default:
