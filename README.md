@@ -62,7 +62,7 @@ Finally, you'll need to update the LD_LIBRARY_PATH environment variable to inclu
 ```bash
 export LD_LIBRARY_PATH=$HOME/local/lib:$LD_LIBRARY_PATH
 ```
-You can add this line to your .bashrc or .bash_profile file to make it permanent. Now you should be able to use the libpng library without sudo access. It may be necessary to compile libpng again, as we did in step 1.
+You can add this line to your .bashrc or .bash_profile file to make it permanent. Now you should be able to use the libpng library without sudo access.
 Sharing Compiled Code
 
 If you want to share your compiled code with others, they won't need to perform these steps as long as the shared binary is built with the required libraries (statically linked). When you compile your code with static linking, the necessary library files are included directly in the compiled binary, so other developers won't need to install the library separately.
@@ -80,3 +80,12 @@ gcc serial.c -I$HOME/local/include -L$HOME/local/lib -Wl,-Bstatic -lpng -Wl,-Bdy
 In this command, we use -Wl,-Bstatic and -Wl,-Bdynamic to specify which libraries should be linked statically and which should be linked dynamically. In this case, we are linking libpng statically and other required libraries (like zlib and libm) dynamically.
 
 Note that statically linked binaries will be larger in size, as they include the required libraries. If you prefer a smaller binary size, you can share the dynamically linked binary, but other developers will need to install the libpng library (either using sudo or locally) and set the appropriate environment variables (e.g., LD_LIBRARY_PATH).
+
+After images have been processed, you can determine the percentage difference in the images using ImageMagicK
+```bash
+gcc compare_image.c -o compare
+```
+Then the comparison can occur with..
+```bash
+./compare image1.png image2.png
+```
