@@ -1,4 +1,4 @@
-//gcc compare_image.c -o compare to compile
+//gcc compare_image.c -o compare
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,8 +23,15 @@ int main(int argc, char* argv[]) {
   }
   char command[256];
   if (cflag) {
-    sprintf(command, "compare -metric AE -fuzz 10%% %s %s null:", argv[optind], argv[optind+1]);
+    sprintf(command, "compare -metric AE -fuzz 10%% %s %s null: 2>&1", argv[optind], argv[optind+1]);
+    int result = system(command);
+    float diff;
+    if (sscanf(command, "%f", &diff) == 1) {
+      printf("Percentage Difference: %d %%\n", (int)diff);
+    } else {
+      printf("Failed to calculate percentage difference.\n");
+    }
   }
-  int result = system(command);
   return 0;
 }
+

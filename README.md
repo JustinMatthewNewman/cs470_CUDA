@@ -85,7 +85,7 @@ After images have been processed, you can determine the percentage difference in
 ```bash
 gcc compare_image.c -o compare
 ```
-Then the comparison can occur with..
+Then the comparison can occur with...
 ```bash
-./compare image1.png image2.png
+./compare -c image1.png image2.png
 ```
