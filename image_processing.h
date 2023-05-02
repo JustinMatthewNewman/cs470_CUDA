@@ -347,8 +347,8 @@ background_removal(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
           int x_offset = j % 5;
           int y_offset = j / 5;
 
-          int src_x = x + x_offset - 1;
-          int src_y = y + y_offset - 1;
+          int src_x = x + x_offset - 2;
+          int src_y = y + y_offset - 2;
 
         if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height)
         {

@@ -195,7 +195,7 @@ main (int argc, char *argv[])
     }
   STOP_TIMER (save)
   // Display timing results
-  printf ("READ: %.6f  BACKGROUND: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  "
+  printf ("READ: %.6f  REMOVAL: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  "
           "ROTATE: %.6f  SAVE: %.6f\n",
           GET_TIMER (read), GET_TIMER (background), GET_TIMER (grey),
           GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (save));

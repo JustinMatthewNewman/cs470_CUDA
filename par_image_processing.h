@@ -32,17 +32,11 @@ __global__
 void greyscale(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int width, int height);
 
 __global__
-void background_removal(png_bytep *in_row_pointers, png_bytep *out_row_pointers, 
-                        int width, int height, int threshold);
+void removal (png_bytepp in_row_pointers, png_bytepp out_row_pointers, png_bytepp mid_row_pointers,
+          int width, int height, int target_x, int target_y, int threshold, char removal_type);
 
-void background_removal_averaging(png_bytep *in_row_pointers, png_bytep *out_row_pointers, 
-                                  int width, int height, int threshold);
-
-void foreground_removal(png_bytep *in_row_pointers, png_bytep *out_row_pointers, 
-                        int width, int height, int threshold);
-
-void target_removal(png_bytep *in_row_pointers, png_bytep *out_row_pointers, 
-                int width, int height, int threshold, int target_x, int target_y);
+__global__ void
+median (png_bytepp in_row_pointers, png_bytepp out_row_pointers, int width, int height);
 
 
 // ============================= Rotate ==================================
@@ -292,23 +286,23 @@ greyscale(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
 // ==========================================================================
 
 
-// ============================== Background Removal ========================
+// ============================== Removal ===================================
 
 __global__ void
-background_removal (png_bytepp in_row_pointers, png_bytepp out_row_pointers, png_bytepp mid_row_pointers,
-                    int width, int height, int threshold)
+removal (png_bytepp in_row_pointers, png_bytepp out_row_pointers, png_bytepp mid_row_pointers,
+  int width, int height, int target_x, int target_y, int threshold, char removal_type)
 {
   int index_x = blockIdx.x * blockDim.x + threadIdx.x;
   int index_y = blockIdx.y * blockDim.y + threadIdx.y;
   int stride = blockDim.x * gridDim.x;
   
-  if (index_x <= 0 || index_x >= width * height)
+  if (index_x >= width * height)
   {
     return;
   }
 
-  // get the pixel at coordinate 10, 10
-  png_bytep back_pixel = &in_row_pointers[15][15 * 4];
+  // get the pixel coordinate
+  png_bytep back_pixel = &in_row_pointers[target_x][target_y * 4];
 
   for (int i = index_y * blockDim.x * gridDim.x + index_x; 
           i < width * height; i += blockDim.y * gridDim.y * stride)
@@ -319,10 +313,9 @@ background_removal (png_bytepp in_row_pointers, png_bytepp out_row_pointers, png
       // Background removal technique inspired by Ian Chu Te
       // https://www.kaggle.com/code/ianchute/background-removal-cieluv-color-thresholding/notebook
 
-      png_bytep mid_pixel = &mid_row_pointers[y][x * 4];
       png_bytep in_pixel = &in_row_pointers[y][x * 4];
-
-
+      png_bytep mid_pixel = &mid_row_pointers[y][x * 4];
+      
       // create grey scale pixel colors
       float back_r = back_pixel[0];
       float back_g = back_pixel[1];
@@ -331,28 +324,53 @@ background_removal (png_bytepp in_row_pointers, png_bytepp out_row_pointers, png
       // get mean of the red pixel
       float red_mean = (back_r + in_pixel[0]) / 2;
 
+      // diff the colors of current pixel and the reference pixel
       float diff_r = abs(in_pixel[0] - back_r);
       float diff_g = abs(in_pixel[1] - back_g);
       float diff_b = abs(in_pixel[2] - back_b);
 
+      // Compare the colors with a distance calculation
       // https://www.compuphase.com/cmetric.htm
       float distance = sqrt((2 + (red_mean/256)) * pow(diff_r, 2) + 4 * pow(diff_g, 2) + 
                               (2 + ((255 - red_mean)/256)) * pow(diff_b, 2));
 
-      if (distance < (float) threshold)
-        { 
-          mid_pixel[0] = 0;
-          mid_pixel[1] = 0;
-          mid_pixel[2] = 0;
-          mid_pixel[3] = 0;
-        }
-      else
+      if (in_pixel[3] != 0)
+      {
+        if (distance < (float) threshold)
         {
-          mid_pixel[0] = in_pixel[0];
-          mid_pixel[1] = in_pixel[1];
-          mid_pixel[2] = in_pixel[2];
-          mid_pixel[3] = in_pixel[3];
+          if (removal_type == 'b')
+          { 
+            mid_pixel[0] = 0;
+            mid_pixel[1] = 0;
+            mid_pixel[2] = 0;
+            mid_pixel[3] = 0;
+          }
+          else
+          {
+            mid_pixel[0] = in_pixel[0];
+            mid_pixel[1] = in_pixel[1];
+            mid_pixel[2] = in_pixel[2];
+            mid_pixel[3] = in_pixel[3];
+          }
         }
+        else
+        {
+          if (removal_type == 'b')
+          {
+            mid_pixel[0] = in_pixel[0];
+            mid_pixel[1] = in_pixel[1];
+            mid_pixel[2] = in_pixel[2];
+            mid_pixel[3] = in_pixel[3];
+          }
+          else
+          {
+            mid_pixel[0] = 0;
+            mid_pixel[1] = 0;
+            mid_pixel[2] = 0;
+            mid_pixel[3] = 0;
+          }
+        }
+      }
     }
 
     // Perform median filtering using the same local pixel values defined above
@@ -369,59 +387,58 @@ background_removal (png_bytepp in_row_pointers, png_bytepp out_row_pointers, png
         int x = i % width;
         int y = i / width;
 
-        // get the surrounding colors
-        short local_red[25];
-        short local_green[25];
-        short local_blue[25];
-
-        // Get the colors surrounding the pixel being iterated on
+        // storage of surrounding pixel colors
+        // 5x5 median grid
+        short local_colors[25][3];
+      
+      // get the surrounding pixels colors and store them in the local pixel arrays
         for (int z = 0; z < 25; z++)
         {
           int x_offset = z % 5;
           int y_offset = z / 5;
 
-          int src_x = x + x_offset - 3;
-          int src_y = y + y_offset - 3;
+          int src_x = x + x_offset - 2;
+          int src_y = y + y_offset - 2;
 
           if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height)
           {
             png_bytep mid_pixel = &mid_row_pointers[src_y][src_x * 4];
-            local_red[z] = mid_pixel[0];
-            local_green[z] = mid_pixel[1];
-            local_blue[z] = mid_pixel[2];
+            local_colors[z][0] = mid_pixel[0];
+            local_colors[z][1] = mid_pixel[1];
+            local_colors[z][2] = mid_pixel[2];
           }
         }
-        // __syncthreads();
-        
-        // Sort the colors
-        for (int j = 0; j < 25; j++)
+      
+      // sort the local pixels. shift all of the colors at once based on their index
+      for (int j = 0; j < 25; j++)
+      {
+        for (int k = j + 1; k < 25; k++)
         {
-          for (int k = j + 1; k < 25; k++)
+          float j_luma = (local_colors[j][0] + local_colors[j][1] + local_colors[j][2]) / 3;
+          float k_luma = (local_colors[k][0] + local_colors[k][1] + local_colors[k][2]) / 3;
+
+          if (j_luma > k_luma)
           {
-            // https://alienryderflex.com/hsp.html
-            float j_avg = (local_red[j] + local_green[j] + local_blue[j]) / 3;
-            float k_avg = (local_red[k] + local_green[k] + local_blue[k]) / 3;
-            if (j_avg > k_avg)
-            {
-              short temp_red = local_red[j];
-              local_red[j] = local_red[k];
-              local_red[k] = temp_red;
+            short temp_red = local_colors[j][0];
+            short temp_green = local_colors[j][1];
+            short temp_blue = local_colors[j][2];
 
-              short temp_green = local_green[j];
-              local_green[j] = local_green[k];
-              local_green[k] = temp_green;
+            local_colors[j][0] = local_colors[k][0];
+            local_colors[j][1] = local_colors[k][1];
+            local_colors[j][2] = local_colors[k][2];
 
-              short temp_blue = local_blue[j];
-              local_blue[j] = local_blue[k];
-              local_blue[k] = temp_blue;
-            }
+            local_colors[k][0] = temp_red;
+            local_colors[k][1] = temp_green;
+            local_colors[k][2] = temp_blue;
           }
         }
-        png_bytep out_pixel = &out_row_pointers[y][x * 4];
-        // set the median of the pixels
-        out_pixel[0] = local_red[12];
-        out_pixel[1] = local_green[12];
-        out_pixel[2] = local_blue[12];
+      }
+      png_bytep out_pixel = &out_row_pointers[y][x * 4];
+      // set the median of the pixels
+      out_pixel[0] = local_colors[12][0];
+      out_pixel[1] = local_colors[12][1];
+      out_pixel[2] = local_colors[12][2];
+
             
         // if the pixel used to be a background pixel but is now a foreground pixel, 
         // set the alpha channel to 255
@@ -442,128 +459,82 @@ background_removal (png_bytepp in_row_pointers, png_bytepp out_row_pointers, png
 // ==========================================================================
 
 
-// ==================== Background Removal Averaging =========================
+// ============================== Median Filter =============================
 
-void
-background_removal_averaging(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
-  int width, int height, int threshold) {
-  // Average a 75x75 pixel grid to get the background color
-  int background_r = 0, background_g = 0, background_b = 0;
-  int grid_size = 75;
-  // First, get the average color of the top left corner
-  for (int y = 0; y < grid_size; y++) {
-    for (int x = 0; x < grid_size; x++) {
-      png_bytep in_pixel = & in_row_pointers[y][x * 4];
-      background_r += in_pixel[0];
-      background_g += in_pixel[1];
-      background_b += in_pixel[2];
-    }
+__global__ void
+median (png_bytepp in_row_pointers, png_bytepp out_row_pointers, int width, int height)
+{
+
+  // Isolated median filter for troubleshooting purposes
+  // https://en.wikipedia.org/wiki/Median_filter
+
+  int index_x = blockIdx.x * blockDim.x + threadIdx.x;
+  int index_y = blockIdx.y * blockDim.y + threadIdx.y;
+  int stride = blockDim.x * gridDim.x;
+  
+  if (index_x >= width * height)
+  {
+    return;
   }
-  background_r /= grid_size * grid_size;
-  background_g /= grid_size * grid_size;
-  background_b /= grid_size * grid_size;
 
-  // Compare the average color of the top left corner to the rest of the image
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      png_bytep in_pixel = & in_row_pointers[y][x * 4];
-      png_bytep out_pixel = & out_row_pointers[y][x * 4];
-      // Compare absolute difference between input and input_copy.
-      if (abs(in_pixel[0] - background_r) < threshold &&
-        abs(in_pixel[1] - background_g) < threshold &&
-        abs(in_pixel[2] - background_b) < threshold) {
-        out_pixel[0] = 0;
-        out_pixel[1] = 0;
-        out_pixel[2] = 0;
-        out_pixel[3] = 0; // Set alpha channel to 0 for transparency
-      } else {
-        out_pixel[0] = in_pixel[0];
-        out_pixel[1] = in_pixel[1];
-        out_pixel[2] = in_pixel[2];
-        out_pixel[3] = in_pixel[3]; // Preserve the alpha channel
+  for (int i = index_y * blockDim.x * gridDim.x + index_x; 
+      i < width * height; i += blockDim.y * gridDim.y * stride)
+  {
+    int x = i % width;
+    int y = i / width;
+
+    // storage of surrounding pixel colors
+    // 5x5 median grid
+    short local_colors[25][3];
+  
+    // get the surrounding pixels colors and store them in the local pixel arrays
+    for (int z = 0; z < 25; z++)
+    {
+      int x_offset = z % 5;
+      int y_offset = z / 5;
+
+      int src_x = x + x_offset - 2;
+      int src_y = y + y_offset - 2;
+
+      if (src_x >= 0 && src_x < width && src_y >= 0 && src_y < height)
+      {
+        png_bytep in_pixel = &in_row_pointers[src_y][src_x * 4];
+        local_colors[z][0] = in_pixel[0];
+        local_colors[z][1] = in_pixel[1];
+        local_colors[z][2] = in_pixel[2];
       }
     }
-  }
-}
+    // Sort the local pixels by color average
+    for (int j = 0; j < 25; j++)
+    {
+      for (int k = j + 1; k < 25; k++)
+      {
+        float j_luma = (local_colors[j][0] + local_colors[j][1] + local_colors[j][2]) / 3;
+        float k_luma = (local_colors[k][0] + local_colors[k][1] + local_colors[k][2]) / 3;
 
-// ==========================================================================
+        if (j_luma > k_luma)
+        {
+          short temp_red = local_colors[j][0];
+          short temp_green = local_colors[j][1];
+          short temp_blue = local_colors[j][2];
 
-// =========================== Foreground Removal ===========================
+          local_colors[j][0] = local_colors[k][0];
+          local_colors[j][1] = local_colors[k][1];
+          local_colors[j][2] = local_colors[k][2];
 
-void
-foreground_removal(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
-  int width, int height, int threshold) {
-  // Convert the input_copy to greyscale
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      png_bytep in_pixel = & in_row_pointers[y][x * 4];
-      png_bytep out_pixel = & out_row_pointers[y][x * 4];
-      int grey = (in_pixel[0] + in_pixel[1] + in_pixel[2]) / 3;
-      // Saturate the input_copy by thresholding
-      int grey_threshold = (grey < threshold) ? 0 : grey;
-
-      if (abs(in_pixel[0] - grey_threshold) < threshold)  {
-        out_pixel[0] = in_pixel[0];
-        out_pixel[1] = in_pixel[1];
-        out_pixel[2] = in_pixel[2];
-        out_pixel[3] = in_pixel[3]; // Preserve the alpha channel
-      } else {
-        out_pixel[0] = 0;
-        out_pixel[1] = 0;
-        out_pixel[2] = 0;
-        out_pixel[3] = 0; // Set alpha channel to 0 for transparency
-      }
-    }
-  }
-}
-
-// ==========================================================================
-
-// ========================== Targeting =====================================
-
-void
-target_removal(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
-  int width, int height, int threshold, int target_x, int target_y) {
-
-    // Average a 50x50 pixel grid around the target to get the background color
-    int background_r = 0, background_g = 0, background_b = 0;
-    int grid_size = 25;
-
-    // First, get the average color of the target area
-    for (int y = target_y - grid_size / 2; y < target_y + grid_size / 2; y++) {
-      for (int x = target_x - grid_size / 2; x < target_x + grid_size / 2; x++) {
-        png_bytep in_pixel = & in_row_pointers[y][x * 4];
-        background_r += in_pixel[0];
-        background_g += in_pixel[1];
-        background_b += in_pixel[2];
-      }
-    }
-
-    background_r /= grid_size * grid_size;
-    background_g /= grid_size * grid_size;
-    background_b /= grid_size * grid_size;
-
-    // Compare the average color of the target area to the rest of the image
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        png_bytep in_pixel = & in_row_pointers[y][x * 4];
-        png_bytep out_pixel = & out_row_pointers[y][x * 4];
-
-        if (abs(in_pixel[0] - background_r) < threshold &&
-          abs(in_pixel[1] - background_g) < threshold &&
-          abs(in_pixel[2] - background_b) < threshold) {
-          out_pixel[0] = 0;
-          out_pixel[1] = 0;
-          out_pixel[2] = 0;
-          out_pixel[3] = 0; // Set alpha channel to 0 for transparency
-        } else {
-          out_pixel[0] = in_pixel[0];
-          out_pixel[1] = in_pixel[1];
-          out_pixel[2] = in_pixel[2];
-          out_pixel[3] = in_pixel[3]; // Preserve the alpha channel
+          local_colors[k][0] = temp_red;
+          local_colors[k][1] = temp_green;
+          local_colors[k][2] = temp_blue;
         }
       }
     }
+    png_bytep out_pixel = &out_row_pointers[y][x * 4];
+    // set the median of the pixels
+    out_pixel[0] = local_colors[12][0];
+    out_pixel[1] = local_colors[12][1];
+    out_pixel[2] = local_colors[12][2];
+    out_pixel[3] = 255;
   }
+}
 
 #endif // IMAGE_PROCESSING_H

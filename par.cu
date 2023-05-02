@@ -17,21 +17,21 @@ main (int argc, char *argv[])
 {
   int opt;
   int threshold;
-  int target_x;
-  int target_y;
   bool d_flag = false;
   bool g_flag = false;
   bool r_flag = false;
   bool b_flag = false;
-  bool a_flag = false;
   bool f_flag = false;
-  bool t_flag = false;
   bool s_flag = false;
+  bool m_flag = false;
   char *input_filename = NULL;
   char *output_filename = NULL;
+  int target_x;
+  int target_y;
+
 
   // Parse the command line options
-  while ((opt = getopt (argc, argv, "dg:rb:a:f:t:s:")) != -1)
+  while ((opt = getopt (argc, argv, "dg:rb:f:m:s:")) != -1)
     {
       switch (opt)
         {
@@ -47,21 +47,19 @@ main (int argc, char *argv[])
           break;          
         case 'b':
           b_flag = true;
-          threshold = atoi (optarg);
-          break;
-        case 'a':
-          a_flag = true;
-          threshold = atoi (optarg);
+          target_x = atoi (optarg);
+          target_y = atoi (argv[optind++]);
+          threshold = atoi (argv[optind++]);
           break;
         case 'f':
           f_flag = true;
-          threshold = atoi (optarg);
-          break;
-        case 't':
-          t_flag = true;
-          threshold = atoi (optarg);
-          target_x = atoi (argv[optind++]);
+          target_x = atoi (optarg);
           target_y = atoi (argv[optind++]);
+          threshold = atoi (argv[optind++]);
+          break;
+        case 'm':
+          m_flag = true;
+          threshold = atoi (optarg);
           break;
         case 's':
           s_flag = true;
@@ -181,33 +179,39 @@ main (int argc, char *argv[])
   STOP_TIMER (rotate)
   // // =========================================================
 
-  // ============================== BG remove ===================
-  START_TIMER (background)
+  // ============================== Background remove ===========
+  START_TIMER (removal)
   if (b_flag)
     {
-      background_removal<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, 
-                            mid_row_pointers, width, height, threshold);
+      // Usage: ./par -b 15 15 75 input.png output.png
+      //                 x  y  threshold
+      removal<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, 
+      mid_row_pointers, width, height, target_x, target_y, threshold, 'b');
       cudaDeviceSynchronize();
     }
-  // ============================== BGA remove ===================
-  if (a_flag)
-    {
-      background_removal_averaging (in_row_pointers, out_row_pointers, width,
-                                    height, threshold);
-    }
-  // ======================== Fore remove =======================
+  // ======================== Foreground remove =================
   if (f_flag)
     {
-      foreground_removal (in_row_pointers, out_row_pointers, width, height,
-                          threshold);
+      // Usage: ./par -f 15 15 75 input.png output.png
+      //                 x  y  threshold
+      removal<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, 
+      mid_row_pointers, width, height, target_x, target_y, threshold, 'f');
+      cudaDeviceSynchronize();
     }
-  // ======================== Targeting =======================
-  if (t_flag)
+  STOP_TIMER (removal)
+  // ============================================================
+
+  // ======================== Median Filter =====================
+  START_TIMER (median)
+  if (m_flag)
     {
-      target_removal (in_row_pointers, out_row_pointers, width, height, threshold,
-                 target_x, target_y);
+      // threshold is meaningless
+      // Usage: ./par -m 1 input7.png output7.png 
+      median<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, 
+                                        width, height);
+      cudaDeviceSynchronize();
     }
-  STOP_TIMER (background)
+  STOP_TIMER (median)
   // ============================================================
 
 
@@ -232,10 +236,10 @@ main (int argc, char *argv[])
   STOP_TIMER (save)
 
   // Display timing results
-  printf ("READ: %.6f  BACKGROUND: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  "
-          "ROTATE: %.6f  SAVE: %.6f\n",
-          GET_TIMER (read), GET_TIMER (background), GET_TIMER (grey),
-          GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (save));
+  printf ("READ: %.6f  REMOVAL: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  "
+          "ROTATE: %.6f  MEDIAN: %.6f SAVE: %.6f\n",
+          GET_TIMER (read), GET_TIMER (removal), GET_TIMER (grey),
+  GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (median), GET_TIMER (save));
 
   for (png_uint_32 i = 0; i < height; i++)
     {
@@ -249,6 +253,7 @@ main (int argc, char *argv[])
   cudaFree (mid_row_pointers);
   cudaFree (cuda_in_row_pointers);
   cudaFree (out_row_pointers);
+  free(in_row_pointers);
 
   return 0;
 }
