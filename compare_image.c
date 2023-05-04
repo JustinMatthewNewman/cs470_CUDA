@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
       printf("Failed to calculate percentage difference.\n");
     }
   } else if (aflag) {
-    sprintf(command, "composite -gravity center %s %s %s", argv[optind], argv[optind+1], argv[optind+2]);
+    sprintf(command, "composite -gravity center %s %s -blend 50x50 %s", argv[optind], argv[optind+1], argv[optind+2]);
     int result = system(command);
   }
   return 0;
