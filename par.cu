@@ -9,8 +9,8 @@
 #include <stdlib.h>
 
 // Constants for CUDA
-int NBLOCKS = 1;
-int NTHREADS = 3;
+  int blockSize = 256;
+
 
 int
 main (int argc, char *argv[])
@@ -47,15 +47,19 @@ main (int argc, char *argv[])
           break;          
         case 'b':
           b_flag = true;
-          target_x = atoi (optarg);
-          target_y = atoi (argv[optind++]);
-          threshold = atoi (argv[optind++]);
+          // target_x = atoi (optarg);
+          // target_y = atoi (argv[optind++]);
+          // threshold = atoi (argv[optind++]);
+                    threshold = atoi (optarg);
+
           break;
         case 'f':
           f_flag = true;
-          target_x = atoi (optarg);
-          target_y = atoi (argv[optind++]);
-          threshold = atoi (argv[optind++]);
+          // target_x = atoi (optarg);
+          // target_y = atoi (argv[optind++]);
+          // threshold = atoi (argv[optind++]);
+                    threshold = atoi (optarg);
+
           break;
         case 'm':
           m_flag = true;
@@ -142,7 +146,6 @@ main (int argc, char *argv[])
       cudaMallocManaged(&mid_row_pointers[i], new_width * 4 * sizeof(png_byte));
     }
 
-  int blockSize = 256;
   int numBlocks = (width * height + blockSize - 1) / blockSize;
   // dim3 dimGrid((height-1)/16 + 1, (width-1)/16+1, 1);
   // dim3 dimBlock(16,16,1);
@@ -186,7 +189,7 @@ main (int argc, char *argv[])
       // Usage: ./par -b 15 15 75 input.png output.png
       //                 x  y  threshold
       removal<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, 
-      mid_row_pointers, width, height, target_x, target_y, threshold, 'b');
+      mid_row_pointers, width, height, 15, 15, threshold, 'b');
       cudaDeviceSynchronize();
     }
   // ======================== Foreground remove =================
@@ -195,7 +198,7 @@ main (int argc, char *argv[])
       // Usage: ./par -f 15 15 75 input.png output.png
       //                 x  y  threshold
       removal<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, 
-      mid_row_pointers, width, height, target_x, target_y, threshold, 'f');
+      mid_row_pointers, width, height, 15, 15, threshold, 'f');
       cudaDeviceSynchronize();
     }
   STOP_TIMER (removal)
@@ -216,12 +219,15 @@ main (int argc, char *argv[])
 
 
   // // =========================== Sort ========================
-  START_TIMER (sort)
-  if (s_flag)
+    START_TIMER (sort)
+    if (s_flag)
     {
-      pixel_sort (in_row_pointers, out_row_pointers, width, height, threshold);
+        int blockSize = 256;
+        int numBlocks = (height + blockSize - 1) / blockSize;
+        pixel_sort_kernel<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, width, height, threshold);
+        cudaDeviceSynchronize();
     }
-  STOP_TIMER (sort)
+    STOP_TIMER (sort)
   // =========================================================
 
   cudaDeviceSynchronize();
@@ -236,10 +242,16 @@ main (int argc, char *argv[])
   STOP_TIMER (save)
 
   // Display timing results
-  printf ("READ: %.6f  REMOVAL: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  "
-          "ROTATE: %.6f  MEDIAN: %.6f SAVE: %.6f\n",
+  // printf ("READ: %.6f  BACKGROUND: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  "
+  //         "ROTATE: %.6f  SAVE: %.6f\n",
+  //         GET_TIMER (read), GET_TIMER (background), GET_TIMER (grey),
+  //         GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (save));
+    double totalTime = GET_TIMER(read) + GET_TIMER(removal) + GET_TIMER(grey) + 
+                   GET_TIMER(blur) + GET_TIMER(sort) + GET_TIMER(rotate) + GET_TIMER(save);
+  printf ("%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %d, ",
           GET_TIMER (read), GET_TIMER (removal), GET_TIMER (grey),
-  GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (median), GET_TIMER (save));
+          GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (save), totalTime, 4);
+
 
   for (png_uint_32 i = 0; i < height; i++)
     {

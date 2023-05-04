@@ -5,7 +5,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include <stdlib.h>
-
+#include <cuda_runtime.h>
 
 // Function prototypes
 
@@ -14,15 +14,25 @@ void rotate_90(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int widt
 
 void usage();
 
+__device__
 int get_next_non_white_x(png_bytep *row_pixels, int x, int width, int white_threshold);
 
+__device__
 int get_next_white_x(png_bytep *row_pixels, int x, int width, int white_threshold);
 
 void sort_pixels_by_brightness(png_bytep *unsorted, png_bytep *sorted, int sorting_length);
 
 int get_brightness(png_bytep pixel);
 
-void pixel_sort(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int width, int height, int threshold);
+__global__
+void pixel_sort_kernel(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int width, int height, int threshold);
+
+__device__
+void swap_pixels(png_bytep px1, png_bytep px2);
+
+__device__
+float compute_brightness(png_bytep px);
+
 
 double *create_gaussian_kernel(int radius, double sigma);
 
@@ -37,6 +47,11 @@ void removal (png_bytepp in_row_pointers, png_bytepp out_row_pointers, png_bytep
 
 __global__ void
 median (png_bytepp in_row_pointers, png_bytepp out_row_pointers, int width, int height);
+
+
+// ================================================================
+
+
 
 
 // ============================= Rotate ==================================
@@ -76,7 +91,7 @@ rotate_90(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
 
 void
 usage() {
-  printf("Usage: ./serial <option(s)> image-file\n");
+  printf("Usage: ./par <option(s)> image-file\n");
   printf("Options are:\n");
   printf("\t-d\tdesaturate <threshold>\n");
   printf("\t-g\tgaussian blur <threshold>\n");
@@ -88,120 +103,104 @@ usage() {
   printf("\t-s\tsorting <threshold>\n");
 }
 
-// Helper function to get the first non-white x value in the row
-int
-get_next_non_white_x(png_bytep * row_pixels, int x, int width,
-  int white_threshold) {
-  while (true) {
-    png_bytep pixel = row_pixels[x];
-    int brightness = get_brightness(pixel);
-    if (brightness < white_threshold) {
-      return x;
+
+// cuda utils
+
+__device__
+float compute_brightness(png_bytep pixel) {
+      int r = pixel[0];
+      int g = pixel[1];
+      int b = pixel[2];
+      return (r + g + b) / 3;
+}
+
+__device__
+void swap_pixels(png_bytep px1, png_bytep px2) {
+    for (int i = 0; i < 4; i++) {
+        png_byte temp = px1[i];
+        px1[i] = px2[i];
+        px2[i] = temp;
     }
+}
+
+__device__
+int get_next_non_white_x(png_bytep row, int x, int width, int white_threshold) {
+    while (true) {
+        int brightness = compute_brightness(row + x * 4);
+        if (brightness < white_threshold) {
+            return x;
+        }
+        x++;
+        if (x >= width) {
+            return -1;
+        }
+    }
+}
+
+__device__
+int get_next_white_x(png_bytep row, int x, int width, int white_threshold) {
     x++;
-    if (x >= width) {
-      return -1;
+    while (true) {
+        if (x >= width) {
+            return width - 1;
+        }
+
+        int brightness = compute_brightness(row + x * 4);
+
+        if (brightness >= white_threshold) {
+            return x - 1;
+        }
+        x++;
     }
-  }
 }
 
-// Helper function to get the next white x value in the row
-int get_next_white_x(png_bytep * row_pixels, int x, int width, int white_threshold) {
-  x++;
-  while (true) {
-    if (x >= width) {
-      return width - 1;
-    }
+__global__
+void pixel_sort_kernel(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int width, int height, int threshold) {
+    int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    png_bytep pixel = row_pixels[x];
-    int brightness = get_brightness(pixel);
+    if (row_idx < height) {
+        png_bytep in_row = in_row_pointers[row_idx];
+        png_bytep out_row = out_row_pointers[row_idx];
 
-    if (brightness >= white_threshold) {
-      return x - 1;
+        // Copy input row to output row
+        for (int x = 0; x < width * 4; x++) {
+            out_row[x] = in_row[x];
+        }
+
+        int x_start = 0;
+        int x_end = 0;
+        while (x_end < width - 1) {
+            x_start = get_next_non_white_x(out_row, x_start, width, threshold);
+            x_end = get_next_white_x(out_row, x_start, width, threshold);
+
+            if (x_start < 0)
+                break;
+
+            int sorting_length = x_end - x_start + 1;
+            for (int i = 0; i < sorting_length - 1; i++) {
+                int max_idx = i;
+                float max_brightness = compute_brightness(out_row + (x_start + i) * 4);
+                for (int j = i + 1; j < sorting_length; j++) {
+                    float brightness = compute_brightness(out_row + (x_start + j) * 4);
+                    if (brightness < max_brightness) {
+                        max_brightness = brightness;
+                        max_idx = j;
+                    }
+                }
+                swap_pixels(out_row + (x_start + i) * 4, out_row + (x_start + max_idx) * 4);
+            }
+            x_start = x_end + 1;
+        }
     }
-    x++;
-  }
 }
 
-
-/**
- * Sort Pixels by brightness
- */
-void
-sort_pixels_by_brightness(png_bytep * unsorted, png_bytep * sorted,
-  int sorting_length) {
-  for (int i = 0; i < sorting_length - 1; i++) {
-    for (int j = 0; j < sorting_length - i - 1; j++) {
-      int brightness1 = get_brightness(unsorted[j]);
-      int brightness2 = get_brightness(unsorted[j + 1]);
-      if (brightness1 > brightness2) {
-        png_bytep temp = unsorted[j];
-        unsorted[j] = unsorted[j + 1];
-        unsorted[j + 1] = temp;
-      }
-    }
-  }
-
-  for (int i = 0; i < sorting_length; i++) {
-    sorted[i] = unsorted[i];
-  }
-}
-
-// Helper function to get the brightness of a pixel
-int
-get_brightness(png_bytep pixel) {
-  int r = pixel[0];
-  int g = pixel[1];
-  int b = pixel[2];
-  return (r + g + b) / 3;
-}
 // ===============================================================
 
 
 
 
 // ======================== Pixel Sort  ===================================
-void
-pixel_sort(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
-  int height, int threshold) {
-  for (int y = 0; y < height; y++) {
-    png_bytep * row_pixels = (png_bytep * ) malloc(sizeof(png_bytep) * width);
-    for (int x = 0; x < width; x++) {
-      row_pixels[x] = & in_row_pointers[y][x * 4];
-    }
-    int x_start = 0;
-    int x_end = 0;
-    while (x_end < width - 1) {
-      x_start = get_next_non_white_x(row_pixels, x_start, width, threshold);
-      x_end = get_next_white_x(row_pixels, x_start, width, threshold);
-           // printf("segfault is here\n");
-      if (x_start < 0)
-        break;
-      int sorting_length = x_end - x_start;
-      png_bytep * unsorted = (png_bytep * ) malloc(sizeof(png_bytep) * sorting_length);
-      png_bytep * sorted = (png_bytep * ) malloc(sizeof(png_bytep) * sorting_length);
-      for (int i = 0; i < sorting_length; i++) {
-        unsorted[i] = row_pixels[x_start + i];
-      }
-      sort_pixels_by_brightness(unsorted, sorted, sorting_length);
-      for (int i = 0; i < sorting_length; i++) {
-        row_pixels[x_start + i] = sorted[i];
-      }
-      x_start = x_end + 1;
-      // free(unsorted);
-      // free(sorted);
-    }
-    for (int x = 0; x < width; x++) {
-      png_bytep in_pixel = row_pixels[x];
-      png_bytep out_pixel = & out_row_pointers[y][x * 4];
-      out_pixel[0] = in_pixel[0];
-      out_pixel[1] = in_pixel[1];
-      out_pixel[2] = in_pixel[2];
-      out_pixel[3] = in_pixel[3];
-    }
-    //free(row_pixels);
-  }
-}
+
 // ================================================================
 
 
