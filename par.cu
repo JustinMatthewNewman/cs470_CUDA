@@ -26,8 +26,8 @@ main (int argc, char *argv[])
   bool m_flag = false;
   char *input_filename = NULL;
   char *output_filename = NULL;
-  int target_x;
-  int target_y;
+  //int target_x;
+  //int target_y;
 
 
   // Parse the command line options
@@ -222,8 +222,6 @@ main (int argc, char *argv[])
     START_TIMER (sort)
     if (s_flag)
     {
-        int blockSize = 256;
-        int numBlocks = (height + blockSize - 1) / blockSize;
         pixel_sort_kernel<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, width, height, threshold);
         cudaDeviceSynchronize();
     }
@@ -242,15 +240,15 @@ main (int argc, char *argv[])
   STOP_TIMER (save)
 
   // Display timing results
-  // printf ("READ: %.6f  BACKGROUND: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  "
-  //         "ROTATE: %.6f  SAVE: %.6f\n",
-  //         GET_TIMER (read), GET_TIMER (background), GET_TIMER (grey),
-  //         GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (save));
-    double totalTime = GET_TIMER(read) + GET_TIMER(removal) + GET_TIMER(grey) + 
-                   GET_TIMER(blur) + GET_TIMER(sort) + GET_TIMER(rotate) + GET_TIMER(save);
-  printf ("%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %d, ",
+  printf ("READ: %.6f  BACKGROUND: %.6f  GREY: %.6f  BLUR: %.6f  SORT: %.6f  "
+          "ROTATE: %.6f  SAVE: %.6f\n",
           GET_TIMER (read), GET_TIMER (removal), GET_TIMER (grey),
-          GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (save), totalTime, 4);
+          GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (save));
+    //double totalTime = GET_TIMER(read) + GET_TIMER(removal) + GET_TIMER(grey) + 
+                   //GET_TIMER(blur) + GET_TIMER(sort) + GET_TIMER(rotate) + GET_TIMER(save);
+  //printf ("%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %d, ",
+          //GET_TIMER (read), GET_TIMER (removal), GET_TIMER (grey),
+          //GET_TIMER (blur), GET_TIMER (sort), GET_TIMER (rotate), GET_TIMER (save), totalTime, 4);
 
 
   for (png_uint_32 i = 0; i < height; i++)

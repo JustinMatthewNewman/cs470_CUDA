@@ -65,8 +65,8 @@ rotate_90(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
   int height) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
-
-  for (int y = index; y < height; y+=stride) {
+  
+  for (int y = index; y < height; y += stride) {
     for (int x = 0; x < width; x++) {
       png_bytep in_pixel = & in_row_pointers[y][x * 4];
       png_bytep out_pixel = & out_row_pointers[x][(height - y - 1) * 4];
@@ -76,6 +76,7 @@ rotate_90(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
       out_pixel[3] = in_pixel[3];
     }
   }
+  
   
   
 }
