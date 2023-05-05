@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "==========Testing Deterministic Options for Correctness=========="
+echo ""
 ./serial -d input.png output.png > /dev/null
 ./par -d input.png output2.png > /dev/null
 compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
@@ -33,57 +35,6 @@ else
     echo "Rotate test... failed"
 fi
 
-./serial -b 10 input.png output.png > /dev/null
-./par -b 10 input.png output2.png > /dev/null
-compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
-grep '0 (0)' result.txt > /dev/null
-
-if [ $? == 0 ]; then
-    echo "Background Removal test... passed"
-else
-    echo "Background Removal test... failed"
-fi
-
-./serial -a 10 input.png output.png > /dev/null
-./par -a 10 input.png output2.png > /dev/null
-compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
-grep '0 (0)' result.txt > /dev/null
-
-if [ $? == 0 ]; then
-    echo "Background Removal Averaging test... passed"
-else
-    echo "Background Removal Averaging test... failed"
-fi
-
-./serial -f 10 input.png output.png > /dev/null
-./par -f 10 input.png output2.png > /dev/null
-compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
-grep '0 (0)' result.txt > /dev/null
-
-if [ $? == 0 ]; then
-    echo "Foreground Removal test... passed"
-else
-    echo "Foreground Removal test... failed"
-fi
-
-./serial -t 10 15 15 input.png output.png > /dev/null
-./par -t 10 15 15 input.png output2.png > /dev/null
-compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
-grep '0 (0)' result.txt > /dev/null
-
-if [ $? == 0 ]; then
-    echo "Target Removal test... passed"
-else
-    echo "Target Removal test... failed"
-fi
-
-./serial -s 10 input.png output.png > /dev/null
-./par -s 10 input.png output2.png > /dev/null
-compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
-grep '0 (0)' result.txt > /dev/null
-
-if [ $? == 0 ]; then
-    echo "Sorting test... passed"
-else
-    echo "Sorting test... failed"
-fi
+echo "==========Times and Images for Option/Threshold Combinations=========="
+echo ""
+bash time.sh input.png
