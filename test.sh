@@ -1,73 +1,89 @@
 #!/bin/bash
 
-# Ensure input file name argument is provided
-if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 input.png"
-  exit 1
+./serial -d input.png output.png > /dev/null
+./par -d input.png output2.png > /dev/null
+compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
+grep '0 (0)' result.txt > /dev/null
+
+if [ $? == 0 ]; then
+    echo "desaturation test... passed"
+else
+    echo "desaturation test... failed"
 fi
 
-input_file="$1"
-output_directory="test"
+./serial -g 10 input.png output.png > /dev/null
+./par -g 10 input.png output2.png > /dev/null
+compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
+grep '0 (0)' result.txt > /dev/null
 
-# Create the output directory if it does not exist
-mkdir -p "$output_directory"
+if [ $? == 0 ]; then
+    echo "Gaussian Blur test... passed"
+else
+    echo "Gaussian Blur test... failed"
+fi
 
+./serial -r input.png output.png > /dev/null
+./par -r input.png output2.png > /dev/null
+compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
+grep '0 (0)' result.txt > /dev/null
 
-echo "Testing -s option"
-# Loop through the range from 1 to 250 with -s option
-for i in $(seq 0 250); do
-  # Generate the output file name
-  output_file="${output_directory}/frame_s_${i}.png"
+if [ $? == 0 ]; then
+    echo "Rotate test... passed"
+else
+    echo "Rotate test... failed"
+fi
 
-  # Call the program with the current -s value
-  ./serial -s "$i" "$input_file" "$output_file"
+./serial -b 10 input.png output.png > /dev/null
+./par -b 10 input.png output2.png > /dev/null
+compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
+grep '0 (0)' result.txt > /dev/null
 
-  # Print progress
-  echo "Generated frame ${i}/250: ${output_file}"
-done
+if [ $? == 0 ]; then
+    echo "Background Removal test... passed"
+else
+    echo "Background Removal test... failed"
+fi
 
-echo "All frames generated with -s option in ${output_directory}"
+./serial -a 10 input.png output.png > /dev/null
+./par -a 10 input.png output2.png > /dev/null
+compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
+grep '0 (0)' result.txt > /dev/null
 
-echo "Testing -b option"
-# Loop through the range from 0 to 100 with -b option
-for i in $(seq 0 100); do
-  # Generate the output file name
-  output_file="${output_directory}/frame_b_${i}.png"
+if [ $? == 0 ]; then
+    echo "Background Removal Averaging test... passed"
+else
+    echo "Background Removal Averaging test... failed"
+fi
 
-  # Call the program with the current -b value
-  ./serial -b "$i" "$input_file" "$output_file"
+./serial -f 10 input.png output.png > /dev/null
+./par -f 10 input.png output2.png > /dev/null
+compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
+grep '0 (0)' result.txt > /dev/null
 
-  # Print progress
-  echo "Generated frame ${i}/100: ${output_file}"
-done
+if [ $? == 0 ]; then
+    echo "Foreground Removal test... passed"
+else
+    echo "Foreground Removal test... failed"
+fi
 
-echo "All frames generated with -b option in ${output_directory}"
+./serial -t 10 15 15 input.png output.png > /dev/null
+./par -t 10 15 15 input.png output2.png > /dev/null
+compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
+grep '0 (0)' result.txt > /dev/null
 
-echo "Testing -g option"
-# Loop through the range from 0 to 100 with -b option
-for i in $(seq 0 10); do
-  # Generate the output file name
-  output_file="${output_directory}/frame_b_${i}.png"
+if [ $? == 0 ]; then
+    echo "Target Removal test... passed"
+else
+    echo "Target Removal test... failed"
+fi
 
-  # Call the program with the current -b value
-  ./serial -g "$i" "$input_file" "$output_file"
+./serial -s 10 input.png output.png > /dev/null
+./par -s 10 input.png output2.png > /dev/null
+compare -channel all -metric mae output.png output2.png diff.png > result.txt 2>&1
+grep '0 (0)' result.txt > /dev/null
 
-  # Print progress
-  echo "Generated frame ${i}/10: ${output_file}"
-done
-
-echo "All frames generated with -g option in ${output_directory}"
-
-echo "Testing -d option"
-./serial -d "$input_file" "$output_file"
-echo "All frames generated with -d option in ${output_directory}"
-
-
-echo "Testing -r option"
-./serial -r "$input_file" "$output_file"
-./serial -r "$input_file" "$output_file"
-./serial -r "$input_file" "$output_file"
-./serial -r "$input_file" "$output_file"
-
-echo "All frames generated with -r option in ${output_directory}"
-
+if [ $? == 0 ]; then
+    echo "Sorting test... passed"
+else
+    echo "Sorting test... failed"
+fi
