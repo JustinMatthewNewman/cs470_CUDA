@@ -33,11 +33,6 @@ void swap_pixels(png_bytep px1, png_bytep px2);
 __device__
 float compute_brightness(png_bytep px);
 
-
-double *create_gaussian_kernel(int radius, double sigma);
-
-void gaussian_blur(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int width, int height, int radius, double sigma);
-
 __global__
 void greyscale(png_bytep *in_row_pointers, png_bytep *out_row_pointers, int width, int height);
 
@@ -76,10 +71,11 @@ rotate_90(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
       out_pixel[3] = in_pixel[3];
     }
   }
-  
-  
-  
 }
+
+
+
+
 
 // =======================================================================
 
@@ -195,73 +191,9 @@ void pixel_sort_kernel(png_bytep *in_row_pointers, png_bytep *out_row_pointers, 
     }
 }
 
-// ===============================================================
+// =========================================================================
 
-
-
-
-// ======================== Pixel Sort  ===================================
-
-// ================================================================
-
-
-
-// ============================== Blur ====================================
-double *
-  create_gaussian_kernel(int radius, double sigma) {
-    int size = 2 * radius + 1;
-    double * kernel = (double * ) malloc(size * size * sizeof(double));
-    double sum = 0;
-    double two_sigma_sq = 2.0 * sigma * sigma;
-    for (int y = -radius; y <= radius; y++) {
-      for (int x = -radius; x <= radius; x++) {
-        int index = (y + radius) * size + (x + radius);
-        kernel[index] = exp(-(x * x + y * y) / two_sigma_sq) / (M_PI * two_sigma_sq);
-        sum += kernel[index];
-      }
-    }
-    for (int i = 0; i < size * size; i++) {
-      kernel[i] /= sum;
-    }
-    return kernel;
-  }
-
-void
-gaussian_blur(png_bytep * in_row_pointers, png_bytep * out_row_pointers,
-  int width, int height, int radius, double sigma) {
-  double * kernel = create_gaussian_kernel(radius, sigma);
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      double sum_r = 0, sum_g = 0, sum_b = 0, sum_a = 0;
-      for (int dy = -radius; dy <= radius; dy++) {
-        for (int dx = -radius; dx <= radius; dx++) {
-          int src_x = x + dx;
-          int src_y = y + dy;
-          if (src_x >= 0 && src_x < width && src_y >= 0 &&
-            src_y < height) {
-            int kernel_index = (dy + radius) * (2 * radius + 1) + (dx + radius);
-            double kernel_value = kernel[kernel_index];
-            png_bytep in_pixel = & in_row_pointers[src_y][src_x * 4];
-            sum_r += in_pixel[0] * kernel_value;
-            sum_g += in_pixel[1] * kernel_value;
-            sum_b += in_pixel[2] * kernel_value;
-            sum_a += in_pixel[3] * kernel_value;
-          }
-        }
-      }
-      png_bytep out_pixel = & out_row_pointers[y][x * 4];
-      out_pixel[0] = (png_byte) round(sum_r);
-      out_pixel[1] = (png_byte) round(sum_g);
-      out_pixel[2] = (png_byte) round(sum_b);
-      out_pixel[3] = (png_byte) round(sum_a);
-    }
-  }
-  //free(kernel);
-}
-// ==========================================================================
-
-
-// ================================== Desaturation =============================
+// ================================== Desaturation =========================
 
 __global__
 void
@@ -269,8 +201,10 @@ greyscale(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
   int height) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
-  for (int y = index; y < height; y += stride) {
-    for (int x = 0; x < width; x++) {
+  for (int i = index; i < width * height; i += stride)
+   {
+      int x = i % width;
+      int y = i / width;
       png_bytep in_pixel = & in_row_pointers[y][x * 4];
       png_bytep out_pixel = & out_row_pointers[y][x * 4];
       int grey = (in_pixel[0] + in_pixel[1] + in_pixel[2]) / 3;
@@ -282,7 +216,7 @@ greyscale(png_bytep * in_row_pointers, png_bytep * out_row_pointers, int width,
       out_pixel[3] = in_pixel[3];
     }
   }
-}
+
 // ==========================================================================
 
 

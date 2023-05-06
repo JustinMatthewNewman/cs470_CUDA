@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 // Constants for CUDA
-  int blockSize = 256;
+int blockSize = 256;
 
 
 int
@@ -18,7 +18,6 @@ main (int argc, char *argv[])
   int opt;
   int threshold;
   bool d_flag = false;
-  bool g_flag = false;
   bool r_flag = false;
   bool b_flag = false;
   bool f_flag = false;
@@ -26,39 +25,35 @@ main (int argc, char *argv[])
   bool m_flag = false;
   char *input_filename = NULL;
   char *output_filename = NULL;
-  //int target_x;
-  //int target_y;
+  int target_x;
+  int target_y;
 
 
   // Parse the command line options
-  while ((opt = getopt (argc, argv, "dg:rb:f:m:s:")) != -1)
+  while ((opt = getopt (argc, argv, "d:rb:f:m:s:")) != -1)
     {
       switch (opt)
         {
         case 'd':
           d_flag = true;
           break;
-        case 'g':
-          g_flag = true;
-          threshold = atoi (optarg);
-          break;
         case 'r':
           r_flag = true;
           break;          
         case 'b':
           b_flag = true;
-          // target_x = atoi (optarg);
-          // target_y = atoi (argv[optind++]);
-          // threshold = atoi (argv[optind++]);
-                    threshold = atoi (optarg);
+          target_x = atoi (optarg);
+          target_y = atoi (argv[optind++]);
+          threshold = atoi (argv[optind++]);
+                    //threshold = atoi (optarg);
 
           break;
         case 'f':
           f_flag = true;
-          // target_x = atoi (optarg);
-          // target_y = atoi (argv[optind++]);
-          // threshold = atoi (argv[optind++]);
-                    threshold = atoi (optarg);
+          target_x = atoi (optarg);
+          target_y = atoi (argv[optind++]);
+          threshold = atoi (argv[optind++]);
+                    //threshold = atoi (optarg);
 
           break;
         case 'm':
@@ -163,11 +158,11 @@ main (int argc, char *argv[])
 
   // // =========================== Blur ========================
   START_TIMER (blur)
-  if (g_flag)
-    {
-      gaussian_blur (in_row_pointers, out_row_pointers, width, height,
-                     threshold, 100.0);
-    }
+  // if (g_flag)
+  //   {
+  //     gaussian_blur (in_row_pointers, out_row_pointers, width, height,
+  //                    threshold, 100.0);
+  //   }
   STOP_TIMER (blur)
   // // =========================================================
 
@@ -189,7 +184,7 @@ main (int argc, char *argv[])
       // Usage: ./par -b 15 15 75 input.png output.png
       //                 x  y  threshold
       removal<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, 
-      mid_row_pointers, width, height, 15, 15, threshold, 'b');
+      mid_row_pointers, width, height, target_x, target_y, threshold, 'b');
       cudaDeviceSynchronize();
     }
   // ======================== Foreground remove =================
@@ -198,7 +193,7 @@ main (int argc, char *argv[])
       // Usage: ./par -f 15 15 75 input.png output.png
       //                 x  y  threshold
       removal<<<numBlocks, blockSize>>> (cuda_in_row_pointers, out_row_pointers, 
-      mid_row_pointers, width, height, 15, 15, threshold, 'f');
+      mid_row_pointers, width, height, target_x, target_y, threshold, 'f');
       cudaDeviceSynchronize();
     }
   STOP_TIMER (removal)
