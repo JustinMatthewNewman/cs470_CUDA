@@ -81,11 +81,3 @@ In this command, we use -Wl,-Bstatic and -Wl,-Bdynamic to specify which librarie
 
 Note that statically linked binaries will be larger in size, as they include the required libraries. If you prefer a smaller binary size, you can share the dynamically linked binary, but other developers will need to install the libpng library (either using sudo or locally) and set the appropriate environment variables (e.g., LD_LIBRARY_PATH).
 
-After images have been processed, you can determine the percentage difference in the images using ImageMagicK
-```bash
-gcc compare_image.c -o compare
-```
-Then the comparison can occur with...
-```bash
-./compare -c image1.png image2.png output.png
-```
