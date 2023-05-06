@@ -87,5 +87,5 @@ gcc compare_image.c -o compare
 ```
 Then the comparison can occur with...
 ```bash
-./compare -c image1.png image2.png
+./compare -c image1.png image2.png output.png
 ```
