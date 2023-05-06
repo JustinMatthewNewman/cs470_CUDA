@@ -3,7 +3,7 @@
 echo "==========Testing Deterministic Options for Correctness=========="
 echo ""
 ./serial -d input.png output.png > /dev/null
-./par -d 1 input.png output2.png > /dev/null
+./par -d input.png output2.png > /dev/null
 result=$(compare -channel all -metric mae output.png output2.png diff.png 2>&1)
 
 if [ "$result" = "0 (0)" ]; then

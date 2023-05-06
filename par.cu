@@ -73,6 +73,9 @@ main (int argc, char *argv[])
   // Get the input and output filenames from the command line arguments
   if (optind < argc)
     {
+      if (d_flag) {
+        optind--;
+      }
       input_filename = argv[optind++];
     }
   else

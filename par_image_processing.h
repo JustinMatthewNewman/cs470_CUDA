@@ -90,7 +90,7 @@ void
 usage() {
   printf("Usage: ./par <option(s)> image-file\n");
   printf("Options are:\n");
-  printf("\t-d\tdesaturate <threshold>\n");
+  printf("\t-d\tgreyscale\n");
   printf("\t-g\tgaussian blur <threshold>\n");
   printf("\t-r\trotate\n");
   printf("\t-b\tback-removal <x> <y> <threshold>\n");
