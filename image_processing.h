@@ -76,12 +76,9 @@ void
 usage() {
   printf("Usage: ./serial <option(s)> image-file\n");
   printf("Options are:\n");
-  printf("\t-d\tdesaturate <threshold>\n");
-  printf("\t-g\tgaussian blur <threshold>\n");
+  printf("\t-d\tdesaturate\n");
   printf("\t-r\trotate\n");
   printf("\t-b\tbackground removal <threshold>\n");
-  printf("\t-a\tbackground removal averaging <threshold>\n");
-  printf("\t-f\tforeground removal <threshold>\n");
   printf("\t-t\ttarget removal <threshold> <target-x> <target-y>\n");
   printf("\t-s\tsorting <threshold>\n");
 }

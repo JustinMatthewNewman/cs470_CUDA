@@ -91,12 +91,9 @@ usage() {
   printf("Usage: ./par <option(s)> image-file\n");
   printf("Options are:\n");
   printf("\t-d\tgreyscale\n");
-  printf("\t-g\tgaussian blur <threshold>\n");
   printf("\t-r\trotate\n");
   printf("\t-b\tback-removal <x> <y> <threshold>\n");
-  printf("\t-f\tfore-removal <x> <y> <threshold>\n");
   printf("\t-s\tsorting <threshold>\n");
-  printf("\t-m\tmedian <threshold>\n");
 }
 
 
