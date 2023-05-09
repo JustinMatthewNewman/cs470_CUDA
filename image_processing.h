@@ -79,7 +79,7 @@ usage() {
   printf("\t-d\tdesaturate\n");
   printf("\t-r\trotate\n");
   printf("\t-b\tbackground removal <threshold>\n");
-  #printf("\t-t\ttarget removal <threshold> <target-x> <target-y>\n");
+  //printf("\t-t\ttarget removal <threshold> <target-x> <target-y>\n");
   printf("\t-s\tsorting <threshold>\n");
 }
 
